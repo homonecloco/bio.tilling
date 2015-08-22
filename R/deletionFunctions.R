@@ -168,6 +168,52 @@ getValueType <- function(value, sampleSD, exonSD){
 	ret
 }
 
+longestAdjacentDeletionInLibrary <- function(library, tempDf, libValues, minForDelLib){
+	tempExons <- rownames(tempDf)
+	longestStretch<-0
+	currentStretch<-0
+	tempDf$minForDel <- 1 - ( 3 * tempDf$StdDev)
+	prevDeletion<-F
+	for (i in tempExons) {
+		val<-libValues[i]
+		minForDel <- tempDf[i,"minForDel"]
+		if( minForDel < 0 ){
+			next
+		}
+		if(val < minForDel && val < minForDelLib){
+			currentStretch <- currentStretch + 1
+		}else{
+			currentStretch <- 0
+		}
+		if(currentStretch > longestStretch){
+			longestStretch<-currentStretch 
+		}
+			
+	}
+	longestStretch
+}
+
+longestAdjacentDeletions<- function(contig, df, mat, samplesSD){
+	tempDf <- subset(df,Scaffold==contig)
+	if(max(tempDf$Deletions3Lib3Exon) == 0){
+		return(0)
+	}
+	longestStretch <- 0 
+	tempExons <- rownames(tempDf)
+	tmpMat<-mat[tempExons,]
+	#library<-"LIB11002_Cadenza0432"
+	for(library in colnames(tmpMat) ){	
+		libValues<-tmpMat[,library]
+		minForDelLib <- 1 - (3 * samplesSD[library])
+		currentStretch <- longestAdjacentDeletionInLibrary(library, tempDf, libValues,minForDelLib)
+		if(currentStretch > longestStretch){
+			longestStretch <- currentStretch
+		}
+	}
+	longestStretch
+} 
+
+
 getMinimumDeletionValueInScaffold<-function(contig, df, mat, samplesSD ){
 	tempExons<-rownames(subset(df,Scaffold==contig))
 
@@ -182,7 +228,7 @@ getMinimumDeletionValueInScaffold<-function(contig, df, mat, samplesSD ){
 	libDf <- as.data.frame( names(samplesSD))
 	names(libDf)[1] <- "Library"
 	libDf$sdLib <- samplesSD
-	libDf$MinSDForDel <- (1-3*samplesSD)
+	libDf$MinSDForDel 	
 	libDf$sampleName<-sapply(libDf$Library,getSampleName)
 	
 	tmpDf2<-subset(df,Scaffold==contig)
@@ -305,6 +351,8 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
     }
   }
 }
+
+
 
 
 
