@@ -21,12 +21,12 @@ plotHistWithDensity <- function(X, ... ){
 	legend("topright", top,legend=c("n:",n,"Mean:",m,"St. dev.:", stdev, "Skewness:",sk,"Kurtosis:",kt))
 }
 
-countDeletions <- function(x, sdLibs, minSigmaExon=3, minSigmaLib=3){
+countDeletions <- function(x, sdLibs, minSigmaExon=3, minSigmaLib=3, maxValue=0.75){
 	numT<-as.numeric(x)
 	stdev<-sd(numT, na.rm=TRUE)
 	minForDel <- 1 - ( minSigmaExon * stdev)
 	minForDelLib <- 1 - (minSigmaLib * sdLibs )
-	ret <- length(numT[numT < minForDel & numT < minForDelLib] )
+	ret <- length(numT[numT < minForDel & numT < minForDelLib & numT < maxValue ] )
 	ret
 }
 
@@ -48,7 +48,7 @@ plotWithLibFilter <-function(x, sdLibs , minSigmaExon=3, minSigmaLib=3, ...){
 	plotHistWithNormal(numT, ...)
 }
 
-plotHistWithNormal <- function(x, ...){
+plotHistWithNormal <- function(x,lengendPos="topright", ...){
 	myhist <- hist(x,plot=F,...)
 	multiplier <- myhist$counts / myhist$density
 	mydensity <- density(x)
@@ -74,7 +74,7 @@ plotHistWithNormal <- function(x, ...){
 	stdev<-sd(x, na.rm=TRUE)
 	sk<-skewness(x,type=2, na.rm=TRUE)
 	kt<-kurtosis(x,type=2, na.rm=TRUE)
-	legend("topleft", top,legend=c("n:",n,"Mean:",m,"St. dev.:", stdev, "Skewness:",sk,"Kurtosis:",kt))
+	legend(lengendPos, top,legend=c("n:",n,"Mean:",m,"St. dev.:", stdev, "Skewness:",sk,"Kurtosis:",kt))
 }
 
 
@@ -168,7 +168,7 @@ getValueType <- function(value, sampleSD, exonSD){
 	ret
 }
 
-longestAdjacentDeletionInLibrary <- function(library, tempDf, libValues, minForDelLib){
+longestAdjacentDeletionInLibrary <- function(library, tempDf, libValues, minForDelLib, maxForDel=0){
 	tempExons <- rownames(tempDf)
 	longestStretch<-0
 	currentStretch<-0
@@ -180,7 +180,7 @@ longestAdjacentDeletionInLibrary <- function(library, tempDf, libValues, minForD
 		if( minForDel < 0 ){
 			next
 		}
-		if(val < minForDel && val < minForDelLib){
+		if(val < minForDel && val < minForDelLib && val < maxForDel ){
 			currentStretch <- currentStretch + 1
 		}else{
 			currentStretch <- 0
@@ -192,6 +192,92 @@ longestAdjacentDeletionInLibrary <- function(library, tempDf, libValues, minForD
 	}
 	longestStretch
 }
+
+
+longestWithGoodFlanking <- function(library, tempDf, libValues, minForDelLib, maxForDel=0.25, minForCovered=0.50){
+	tempExons <- rownames(tempDf)
+	minLibValue<- min(libValues)
+	minForDel <- 1 - ( 3 * tempDf$StdDev)
+
+	if(min(minLibValue) > maxForDel){
+		return(0)
+	}
+	if(minForDel < 0){
+		return(0)
+	}
+	longestStretch<-0
+	currentStretch<-0
+	
+	prevDeletion<-F
+	prevCovered<-T
+	prevVal1<-1
+	prevVal2<-1
+	nextVal1<-1
+	nextVal2<-1
+	
+	i<-1
+	deletionsInScaffold <- data.frame(scaffold= character(0), start= integer(0), length = integer(0))
+	while(i < length(tempExons)  ) {
+	 	exonName<-tempExons[i]
+	  	currentDeletion <- F
+
+	  	if(i - 1 > 0){
+	  		prevVal1 = libValues[i - 1]
+	  	}
+	  	if(i - 2 > 0){
+	  		prevVal2 = libValues[i - 2]
+	  	}
+	  	val <- libValues[i]
+
+	  	if(prevVal2 > minForCovered && prevVal2 > minForCovered){
+	  		prevCovered <- T
+	  	}
+	  	if(val < maxForDel && val < minForDel){
+	  		currentDeletion <- T
+	  	}
+
+	  	if(currentDeletion && prevCovered){
+	  		j<-i
+	  		delLength<-1
+	  		while(j < length(tempExons) - 2 && currentDeletion){
+	  			nextVal1<-libValues[j+1]
+	  			nextVal2<-libValues[j+2]
+
+	  		}
+	  		i<-j
+	  	}
+
+	  	print(exonName)
+	  	print(libValues[i])  	
+		i<-i+1		
+	}
+	longestStretch
+}
+
+
+
+longestClearDeletions<- function(contig, df, mat, samplesSD, maxForDel=0.25, minForCovered=0.50){
+	#contig<-"IWGSC_CSS_2BL_scaff_7939376"
+	#library<-"LIB10929_Cadenza0106"	
+	tempDf <- subset(df,Scaffold==contig)
+	if(max(tempDf$Deletions3Lib3Exon) == 0){
+		return(0)
+	}
+	longestStretch <- 0 
+	tempExons <- rownames(tempDf)
+	tmpMat<-mat[tempExons,]
+
+  
+	for(library in colnames(tmpMat) ){	
+		libValues<-tmpMat[,library]
+		minForDelLib <- 1 - (3 * samplesSD[library])
+		currentStretch <- longestAdjacentDeletionInLibrary(library, tempDf, libValues,minForDelLib)
+		if(currentStretch > longestStretch){
+			longestStretch <- currentStretch
+		}
+	}
+	longestStretch
+} 
 
 longestAdjacentDeletions<- function(contig, df, mat, samplesSD){
 	tempDf <- subset(df,Scaffold==contig)
