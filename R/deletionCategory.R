@@ -88,6 +88,33 @@ normalizeCovs<-function(counts, exonsDF) {
 	covs
 }
 
+
+homDeletionFilter<-function(localMat, exonsDF, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3 ) {
+	sdExons<-exonsDF$sdExon
+	missing<-apply(localMat,1,countMissing)
+	sdLibs<-apply(localMat[missing<1,],2,sd)
+
+	sdExons <- 1 - ( minSigmaExon * sdExons)#This is a vector
+	sdLibs <- 1 - (minSigmaLib * sdLibs )
+
+	sdLibs<- ifelse(sdLibs  < maxValueForDeletion, sdLibs , maxValueForDeletion)
+	sdExons<-ifelse(sdExons < maxValueForDeletion, sdExons, maxValueForDeletion)
+	
+	sdLibsMat  <- matrix(sdLibs ,nrow=length(sdExons),ncol=length(sdLibs), byrow=FALSE)
+	sdExonsMat <- matrix(sdExons,nrow=length(sdExons),ncol=length(sdLibs), byrow=TRUE)
+	ret <- pmin(sdExonsMat,sdLibsMat)
+	ret
+}
+
+getHomExoDeletions<-function(localMat, exonDF){
+	library(reshape2)
+	filterMat<-homDeletionFilter(localMat, exonsDF)
+	dels <- localMat < filterMat
+	meltedDels<-melt(dels)
+	meltedDels<-rename(meltedDels, c("Var1"="Scaffold", "Var2"="Library"))
+	meltedDels[meltedDels$value,]
+}
+
 getWholeExonDeletionsLibraryInner <- function(scaffold, library, exonsDF, mat,libSD, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3 ){
 	tempDf <- subset(exonsDF,Scaffold == scaffold)
 	tempExons <- rownames(tempDf)
