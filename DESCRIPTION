@@ -3,11 +3,12 @@ Title: Look for deletions in exome captures
 Version: 0.0.0.9000
 Authors@R: person("Ricardo H.", "Ramirez-Gonzalez", email = "ricardo.ramirez-gonzalez@tgac.ac.uk", role = c("aut", "cre"))
 Description: What the package does (one paragraph)
-Depends: R (>= 3.1.2)
+Depends: R (>= 3.2.2)
 License: MIT 
 LazyData: true
 Imports:
 e1071,
 ggplot2,
 plyr,
-reshape2
+reshape2,
+sqldf

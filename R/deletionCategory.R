@@ -68,6 +68,16 @@ getExonsDF<-function(mat){
     df
 }
 
+getExonsDetails<-function(names){
+	exons<-strsplit(as.character(names), ":")
+	scaffolds<-sapply(exons, "[[", 1)
+	starts<-as.integer(sapply(exons, "[[", 2))
+    df<-data.frame(Exon=names, Scaffold=scaffolds, Start=starts)
+    df
+}
+
+
+
 #' Function that normalizes the coverages, in an RPKM-like values, and normalized to have a mean of 1, at the exon level.
 normalizeCovs<-function(counts, exonsDF) {
 	exonLengths<-exonsDF$ExonL
@@ -106,33 +116,70 @@ homDeletionFilter<-function(localMat, exonsDF, maxValueForDeletion=0.1, minSigma
 	ret
 }
 
-getHomExoDeletions<-function(localMat, exonDF){
+getHomExoDeletions<-function(localMat, exonsDF, maxValueForDeletion=0.1, ...){
 	library(reshape2)
-	filterMat<-homDeletionFilter(localMat, exonsDF)
+	library(plyr)
+	filterMat<-homDeletionFilter(localMat, exonsDF, maxValueForDeletion=maxValueForDeletion,...)
 	dels <- localMat < filterMat
 	meltedDels<-melt(dels)
-	meltedDels<-rename(meltedDels, c("Var1"="Scaffold", "Var2"="Library"))
-	meltedDels[meltedDels$value,]
+	meltedDels<-rename(meltedDels, c("Var1"="Exon", "Var2"="Library", "value"="HomDel"))
+	meltedDels
 }
 
-getWholeExonDeletionsLibraryInner <- function(scaffold, library, exonsDF, mat,libSD, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3 ){
-	tempDf <- subset(exonsDF,Scaffold == scaffold)
-	tempExons <- rownames(tempDf)
-	tmpMat<-as.vector(t(mat[tempExons,library]))
-	numT<-as.numeric(tmpMat)
-	minForDel <- 1 - ( minSigmaExon * tempDf$sdExon)#This is a vector
-	minForDelLib <- 1 - (minSigmaLib * libSD )
-	ret <- numT[numT < minForDel & numT < minForDelLib & numT < maxValueForDeletion] 
-	length(ret)
+getHetExoDeletions<-function(localMat, exonsDF, minSigmaExonHet=1) {
+	library(reshape2)
+	library(plyr)
+	sdExons<-exonsDF$sdExon
+	sdExons <- 0.5 + (minSigmaExonHet * sdExons)#This is a vector
+	sdExonsMat <- matrix(sdExons,nrow=nrow(localMat),ncol=ncol(localMat), byrow=TRUE)
+	dels <- localMat < sdExonsMat
+	meltedDels<-melt(dels)
+	#meltedDels<- meltedDels[meltedDels$value,]
+	meltedDels<-rename(meltedDels, c("Var1"="Exon", "Var2"="Library", "value"=paste("HetDel",minSigmaExonHet,sep="")))
+	meltedDels
 }
 
-getWholeExonDeletionsLibrary <- function(library, scaffoldDF, exonsDF, mat, sdLibs, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3){
-	libSD<-sdLibs[library]
-	delCounts<-sapply(scaffoldDF$Scaffold,getWholeExonDeletionsLibraryInner, library, exonsDF, mat, libSD,  maxValueForDeletion=maxValueForDeletion, minSigmaExon=minSigmaExon, minSigmaLib=minSigmaLib )
-	delCounts	
+getAllDeletedExons<-function(localMat, exonsDF){
+	library(reshape2)
+	library(plyr)
+	meltedMat<-melt(as.matrix(localMat),varnames =c("Exon", "Library"), value.name="NormCov")
+	#meltedMat<-rename(meltedMat, c("Var1"="Exon", "Var2"="Library", "value"="NormCov"))
+	
+	dat<-getHomExoDeletions(localMat, exonsDF)
+	meltedMat$HomDel <- dat$HomDel
+	
+	dat<-getHetExoDeletions(localMat, exonsDF, 1)
+	meltedMat$HetDel1 <- dat$HetDel1
+	meltedMat$Scaffold<-exonsDF$Scaffold
+	meltedMat$Start<-exonsDF$Start
+	meltedMat[meltedMat$HetDel1 | meltedMat$HomDel,]
 }
 
-getWholeExonDeletions<-function(scaffoldsDF, exonsDF, localMat, sdLibs, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3){
+
+
+getAllScaffoldsWithDeletions<-function(exonsDF, delsDF,  minValidExonLength=9){
+	library(sqldf)
+	allScaffcounts <- table(exonsDF$Scaffold)
+	scaffoldsDF <- as.data.frame(rownames(allScaffcounts))
+	names(scaffoldsDF)[1]<-"Scaffold"
+	scaffoldsDF$validExons <- allScaffcounts
+
+	tempMat<-dels[delsDF$HetDel1 | delsDF$HomDel, ]
+	countsHom<-sqldf("SELECT Scaffold, Library, COUNT(*) as HomDels FROM tempMat WHERE HomDel GROUP BY Scaffold, Library ")
+	countsHet<-sqldf("SELECT Scaffold, Library, COUNT(*) as HetDels FROM tempMat WHERE HetDel1 GROUP BY Scaffold, Library ")
+
+	mergedScaffDF <- merge(scaffoldsDF, countsHet, all.x=T)
+	mergedScaffDF <- merge(mergedScaffDF, countsHom, all.x=T)
+	mergedScaffDF$HomDels[is.na(mergedScaffDF$HomDels)] <- 0
+	mergedScaffDF$HomDels[is.na(mergedScaffDF$HetDels)] <- 0
+	allScaffDescription<-sqldf("SELECT Scaffold, Library,validExons, HetDels, HetDels FROM scaffoldsDF LEFT JOIN countsHom ON countsHom.Scaffold = Scaffold")
+	mergedScaffDF<-na.omit(mergedScaffDF)
+	mergedScaffDF<-mergedScaffDF[mergedScaffDF$validExons > minValidExonLength,]
+	mergedScaffDF
+}
+
+
+getWholeExonDeletions<-function(scaffoldsDF, exonsDF, localMat, sdLibs, deletions, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3){
 	library(reshape2)
 	library(plyr)
 
@@ -145,46 +192,16 @@ getWholeExonDeletions<-function(scaffoldsDF, exonsDF, localMat, sdLibs, maxValue
 	deletionsMelted$Category <- "Whole Exon"
 	deletionsMelted<-rename(deletionsMelted, c("Var1"="Scaffold", "Var2"="Library"))
 	delsJoined <- merge(x=deletionsMelted, y=scaffoldsDF, by = "Scaffold", all.x = TRUE )
+
+
 	delsJoined
 }
 
 
-getWholeScaffoldHetDeletionsLibraryInner <- function(scaffold, library, exonsDF, mat,libSD, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3 ){
-	tempDf <- subset(exonsDF,Scaffold == scaffold)
-	tempExons <- rownames(tempDf)
-	tmpMat<-as.vector(t(mat[tempExons,library]))
-	numT<-as.numeric(tmpMat)
-	minForDel <- 0.5 + ( minSigmaExon * tempDf$sdExon)#This is a vector
-	minForDelLib <- 0.5 + (minSigmaLib * libSD )
-	ret <- numT[numT < minForDel & numT < minForDelLib & numT < maxValueForDeletion] 
-	length(ret)
-}
-
-getWholeScaffoldHetDeletionsLibrary <- function(library, scaffoldDF, exonsDF, mat, sdLibs, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3){
-	libSD<-sdLibs[library]
-	delCounts<-sapply(scaffoldDF$Scaffold,getWholeScaffoldHetDeletionsLibraryInner, library, exonsDF, mat, libSD,  maxValueForDeletion=maxValueForDeletion, minSigmaExon=minSigmaExon, minSigmaLib=minSigmaLib )
-	delCounts	
-}
-
-getWholeScaffoldHetDeletions<-function(scaffoldsDF, exonsDF, localMat, sdLibs, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3){
-	library(reshape2)
-	library(plyr)
-
-	libraries<-colnames(localMat)
-	deletions<-sapply(libraries,getWholeScaffoldHetDeletionsLibrary, scaffoldsDF, exonsDF, localMat, sdLibs, maxValueForDeletion=maxValueForDeletion, minSigmaExon=minSigmaExon, minSigmaLib=minSigmaLib)
-	rownames(deletions)<-scaffoldsDF$Scaffold
-	deletionsMelted<-melt(deletions)
-	
-	deletionsMelted<-deletionsMelted[deletionsMelted$value >0,]
-	deletionsMelted$Category <- "Whole Het scaffold"
-	deletionsMelted<-rename(deletionsMelted, c("Var1"="Scaffold", "Var2"="Library"))
-	delsJoined <- merge(x=deletionsMelted, y=scaffoldsDF, by = "Scaffold", all.x = TRUE )
-	delsJoined
-}
 
 
-categorizeDeletions<-function(localMat, exonsDF){
-	library(parallel)
+categorizeDeletions<-function(deletionsMelted, exonsDF){
+
 	all_scaffold_counts <- sort(table(exonsDF$Scaffold))
 	scaffoldsDF <- as.data.frame(rownames(all_scaffold_counts))
 	names(scaffoldsDF)[1]<-"Scaffold"

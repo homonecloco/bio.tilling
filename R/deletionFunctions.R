@@ -10,6 +10,7 @@ getFieldFromExonNameNumeric <- function(str, field=1,  sp=":") {
 }
 
 plotHistWithDensity <- function(X, ... ){
+	library(e1071)
 	hist(X, prob=TRUE, col="grey", ...)# prob=TRUE for probabilities not counts
 	lines(density(X), col="blue", lwd=2) # add a density estimate with defaults
 	lines(density(X, adjust=2), lty="dotted", col="darkgreen", lwd=2) 
@@ -49,6 +50,7 @@ plotWithLibFilter <-function(x, sdLibs , minSigmaExon=3, minSigmaLib=3, ...){
 }
 
 plotHistWithNormal <- function(x,lengendPos="topright", ...){
+	library(e1071)
 	myhist <- hist(x,plot=F,...)
 	multiplier <- myhist$counts / myhist$density
 	mydensity <- density(x)
