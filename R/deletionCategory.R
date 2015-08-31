@@ -163,19 +163,55 @@ getAllScaffoldsWithDeletions<-function(exonsDF, delsDF,  minValidExonLength=9){
 	scaffoldsDF <- as.data.frame(rownames(allScaffcounts))
 	names(scaffoldsDF)[1]<-"Scaffold"
 	scaffoldsDF$validExons <- allScaffcounts
-
-	tempMat<-dels[delsDF$HetDel1 | delsDF$HomDel, ]
+	tempMat<-delsDF
+	tempMat<-delsDF[delsDF$HetDel1 | delsDF$HomDel, ]
+	tempMat<-delsDF
 	countsHom<-sqldf("SELECT Scaffold, Library, COUNT(*) as HomDels FROM tempMat WHERE HomDel GROUP BY Scaffold, Library ")
 	countsHet<-sqldf("SELECT Scaffold, Library, COUNT(*) as HetDels FROM tempMat WHERE HetDel1 GROUP BY Scaffold, Library ")
-
 	mergedScaffDF <- merge(scaffoldsDF, countsHet, all.x=T)
 	mergedScaffDF <- merge(mergedScaffDF, countsHom, all.x=T)
 	mergedScaffDF$HomDels[is.na(mergedScaffDF$HomDels)] <- 0
-	mergedScaffDF$HomDels[is.na(mergedScaffDF$HetDels)] <- 0
-	allScaffDescription<-sqldf("SELECT Scaffold, Library,validExons, HetDels, HetDels FROM scaffoldsDF LEFT JOIN countsHom ON countsHom.Scaffold = Scaffold")
+	mergedScaffDF$HetDels[is.na(mergedScaffDF$HetDels)] <- 0
 	mergedScaffDF<-na.omit(mergedScaffDF)
 	mergedScaffDF<-mergedScaffDF[mergedScaffDF$validExons > minValidExonLength,]
 	mergedScaffDF
+}
+
+getScaffoldAverages<-function(scaffold, library, localMat, exonsDF, minSigmaExonHet=1, maxValueForDeletion=0.1, minSigmaExon=3) {
+	exonsToProcessDF<-exonsDF[exonsDF$Scaffold==scaffold,]
+	exonsToProcess<-rownames(exonsToProcessDF)
+	scaffMat<-localMat[exonsToProcess,library]
+	allAvg<-mean(scaffMat)
+	allNoHom<-mean(scaffMat[scaffMat > maxValueForDeletion])
+	allNoHom<-ifelse(is.na(allNoHom), 1, allNoHom)
+	maxForHetDel<-	0.5 + exonsToProcessDF$sdExon * minSigmaExonHet
+	maxForDel <- 1 - 3*exonsToProcessDF$sdExon
+	allNoDels <- mean(scaffMat[scaffMat > maxForDel])
+	allNoHet<-mean(scaffMat[scaffMat > maxForHetDel])
+	allNoHet<-ifelse(is.na(allNoHet), 1, allNoHet)
+	allNoDels<-ifelse(is.na(allNoDels), 1, allNoDels)
+	arg0<-list(AllAvg=allAvg, AllNoHomAvg=allNoHom, AllNoHetAvg=allNoHet,AllNoDelsAvg=allNoDels)
+	df<-data.frame(t(unlist(arg0)))
+	df
+}
+
+
+getAllScaffoldAverages<-function(delsMat, localMat, exonsDF){
+
+	delsMat$AllAvg<-1.0
+	delsMat$AllNoHomAvg<-1.0 
+	delsMat$AllNoHetAvg <-1.0
+	delsMat$AllNoDelsAvg<-1.0
+	for(i in 1:nrow(delsMat)) {
+	    row <- delsMat[i,]
+	    print(row)
+	    tmpDF <- getScaffoldAverages(row$Scaffold, row$Library, localMat, exonsDF)
+	    print(tmpDF)
+	    delsMat[i,"AllAvg"]      <-tmpDF$AllAvg 		
+		delsMat[i,"AllNoHomAvg"] <-tmpDF$AllNoHomAvg  
+		delsMat[i,"AllNoHetAvg"] <-tmpDF$AllNoHetAvg 
+		delsMat[i,"AllNoDelsAvg"]<-tmpDF$AllNoDelsAvg
+	}
 }
 
 
@@ -192,8 +228,6 @@ getWholeExonDeletions<-function(scaffoldsDF, exonsDF, localMat, sdLibs, deletion
 	deletionsMelted$Category <- "Whole Exon"
 	deletionsMelted<-rename(deletionsMelted, c("Var1"="Scaffold", "Var2"="Library"))
 	delsJoined <- merge(x=deletionsMelted, y=scaffoldsDF, by = "Scaffold", all.x = TRUE )
-
-
 	delsJoined
 }
 

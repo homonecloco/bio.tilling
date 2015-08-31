@@ -334,7 +334,7 @@ getMinimumDeletionValueInScaffold<-function(contig, df, mat, samplesSD ){
 plotScaffoldDeletions<- function(df, mat,  contig, samplesSD ){
 	tempExons<-rownames(subset(df,Scaffold==contig))
 	tmpMat<-mat[tempExons,]
-	melted<-melt(tmpMat)
+	melted<-melt(as.matrix(tmpMat))
 	tmpDf<-as.data.frame(melted)
 	libDf <- as.data.frame( names(samplesSD))
 	names(libDf)[1] <- "Library"
@@ -344,14 +344,20 @@ plotScaffoldDeletions<- function(df, mat,  contig, samplesSD ){
 	
 	tmpDf2<-subset(df,Scaffold==contig)
 	tmpDf2$exon <-rownames(tmpDf2)
+	#print(colnames(tmpDf2))
+	#print(head(tmpDf))
+
 	innerDf<-merge(tmpDf2, tmpDf, by.x="exon", by.y="Var1")
+	#print(colnames(innerDf))
+	#print(colnames(libDf))
 	innerDf<-merge(innerDf, libDf, by.x="Var2", by.y="Library")
-	innerDf$ValueType <- mapply(getValueType,innerDf$value, innerDf$sdLib, innerDf$StdDev)
+	print(head(innerDf))
+	innerDf$ValueType <- mapply(getValueType,innerDf$value, innerDf$sdLib, innerDf$sdExon)
 
 	plot_Data <- ddply(innerDf, .(Start), mutate, Q1=quantile(value, 1/4), Q3=quantile(value, 3/4), IQR=Q3-Q1, upper.limit=Q3+1.5*IQR, lower.limit=Q1-1.5*IQR)
 	gg<- ggplot(plot_Data, aes(x=factor(Start), y=value))
-	gg<- gg + geom_errorbar(aes(ymax=1, ymin=1-3* StdDev), colour='gray', alpha=0.75)
-	gg<- gg + geom_boxplot(aes (fill= factor(Deletions3Lib3Exon)) )
+	gg<- gg + geom_errorbar(aes(ymax=1, ymin=1-3* sdExon), colour='gray', alpha=0.75)
+	gg<- gg + geom_boxplot()
 	gg<- gg + geom_point(data=plot_Data[plot_Data$value > plot_Data$upper.limit | plot_Data$value < plot_Data$lower.limit,], aes(x=factor(Start), y=value, col=factor(ValueType)))
 	gg<- gg + coord_cartesian(ylim=c(0, 1))
 	gg<- gg + geom_text(aes(label=ifelse(ValueType=="4. Deletion 4 sigma exon" , sampleName, ifelse(ValueType=="3. Deletion 3 sigma exon", sampleName, '')))  ,hjust=0,just=0, size=3, angle = 75)
@@ -363,7 +369,7 @@ plotScaffoldDeletions<- function(df, mat,  contig, samplesSD ){
 plotScaffoldDeletionsInLibrary<- function(df, mat,  contig, samplesSD ){
 	tempExons<-rownames(subset(df,Scaffold==contig))
     tmpMat<-mat[tempExons,]
-	melted<-melt(tmpMat)
+	melted<-melt(as.matrix(tmpMat))
 	tmpDf<-as.data.frame(melted)
 	libDf <- as.data.frame( names(samplesSD))
 	names(libDf)[1] <- "Library"
@@ -375,7 +381,7 @@ plotScaffoldDeletionsInLibrary<- function(df, mat,  contig, samplesSD ){
 	tmpDf2$exon <-rownames(tmpDf2)
 	innerDf<-merge(tmpDf2, tmpDf, by.x="exon", by.y="Var1")
 	innerDf<-merge(innerDf, libDf, by.x="Var2", by.y="Library")
-	innerDf$ValueType <- mapply(getValueType,innerDf$value, innerDf$sdLib, innerDf$StdDev)
+	innerDf$ValueType <- mapply(getValueType,innerDf$value, innerDf$sdLib, innerDf$sdExon)
 
 
 	pre_plot_Data <- ddply(innerDf, .(Start), mutate, Q1=quantile(value, 1/4), Q3=quantile(value, 3/4), IQR=Q3-Q1, upper.limit=Q3+1.5*IQR, lower.limit=Q1-1.5*IQR)
@@ -386,7 +392,7 @@ plotScaffoldDeletionsInLibrary<- function(df, mat,  contig, samplesSD ){
 	plot_data<-subset(pre_plot_Data, sampleName %in% libNames )
 	plot_data$Library <- plot_data$Var2
 	gg<- ggplot(plot_data, aes(x=Start, y=value))
-	gg<- gg + geom_errorbar(aes(ymax=1, ymin=1-3* StdDev), colour='gray', alpha=0.75) 
+	gg<- gg + geom_errorbar(aes(ymax=1, ymin=1-3* sdExon), colour='gray', alpha=0.75) 
 	gg<- gg+geom_line(aes(linetype=Library))
 	gg<-gg+geom_point(aes(colour=ValueType))
 	gg<- gg +coord_cartesian(ylim=c(0, 1))
