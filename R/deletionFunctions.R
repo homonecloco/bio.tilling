@@ -351,7 +351,7 @@ plotScaffoldDeletions<- function(df, mat,  contig, samplesSD ){
 	#print(colnames(innerDf))
 	#print(colnames(libDf))
 	innerDf<-merge(innerDf, libDf, by.x="Var2", by.y="Library")
-	print(head(innerDf))
+
 	innerDf$ValueType <- mapply(getValueType,innerDf$value, innerDf$sdLib, innerDf$sdExon)
 
 	plot_Data <- ddply(innerDf, .(Start), mutate, Q1=quantile(value, 1/4), Q3=quantile(value, 3/4), IQR=Q3-Q1, upper.limit=Q3+1.5*IQR, lower.limit=Q1-1.5*IQR)
@@ -364,6 +364,8 @@ plotScaffoldDeletions<- function(df, mat,  contig, samplesSD ){
 	gg<- gg + ggtitle(paste("Normalized coverage for contig \n ", contig))
 	gg
 }
+
+
 
 
 plotScaffoldDeletionsInLibrary<- function(df, mat,  contig, samplesSD ){

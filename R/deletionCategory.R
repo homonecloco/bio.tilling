@@ -29,6 +29,11 @@ filterSamplesPerSD<-function(covs, maxSD=0.3) {
 	covs[,fineSD]
 }
 
+getLibSD<-function(mat) {
+	missing<-apply(mat,1,countMissing)
+	libSD<-apply(mat[missing<1,],2,sd)
+	libSD
+}
 
 #' Filters all the exons that have low quality. 
 filterLowQualityExons <-function(mat, maxSD=0.3){
@@ -177,41 +182,96 @@ getAllScaffoldsWithDeletions<-function(exonsDF, delsDF,  minValidExonLength=9){
 	mergedScaffDF
 }
 
-getScaffoldAverages<-function(scaffold, library, localMat, exonsDF, minSigmaExonHet=1, maxValueForDeletion=0.1, minSigmaExon=3) {
+getScaffoldAverages<-function(scaffold, library, localMat, exonsDF, minSigmaExonHet=1, maxValueForHomDeletion=0.1, minSigmaExon=3) {
 	exonsToProcessDF<-exonsDF[exonsDF$Scaffold==scaffold,]
 	exonsToProcess<-rownames(exonsToProcessDF)
 	scaffMat<-localMat[exonsToProcess,library]
-	allAvg<-mean(scaffMat)
-	allNoHom<-mean(scaffMat[scaffMat > maxValueForDeletion])
-	allNoHom<-ifelse(is.na(allNoHom), 1, allNoHom)
+	
 	maxForHetDel<-	0.5 + exonsToProcessDF$sdExon * minSigmaExonHet
-	maxForDel <- 1 - 3*exonsToProcessDF$sdExon
-	allNoDels <- mean(scaffMat[scaffMat > maxForDel])
-	allNoHet<-mean(scaffMat[scaffMat > maxForHetDel])
-	allNoHet<-ifelse(is.na(allNoHet), 1, allNoHet)
-	allNoDels<-ifelse(is.na(allNoDels), 1, allNoDels)
-	arg0<-list(AllAvg=allAvg, AllNoHomAvg=allNoHom, AllNoHetAvg=allNoHet,AllNoDelsAvg=allNoDels)
-	df<-data.frame(t(unlist(arg0)))
-	df
+	maxForDel   <- 1 - 3*exonsToProcessDF$sdExon
+
+	dels3SigmaExon <- length(scaffMat[scaffMat <= maxForDel])
+	allAvg    <-mean(scaffMat)
+	allNoHom  <-mean(scaffMat[scaffMat > maxValueForHomDeletion])
+	allNoDels <-mean(scaffMat[scaffMat > maxForDel]) #Doesn't include anything below 3sigma exon
+	allNoHet  <-mean(scaffMat[scaffMat > maxForHetDel])
+	hetAvg    <-mean(scaffMat[scaffMat <= maxForHetDel])
+	homAvg    <-mean(scaffMat[scaffMat <= maxValueForHomDeletion])
+
+	SDall    <-sd(scaffMat)
+	SDallNoHom  <-sd(scaffMat[scaffMat > maxValueForHomDeletion])
+	SDallNoDels <-sd(scaffMat[scaffMat > maxForDel]) #Doesn't include anything below 3sigma exon
+	SDallNoHet  <-sd(scaffMat[scaffMat > maxForHetDel])
+	SDhet    <-sd(scaffMat[scaffMat <= maxForHetDel])
+	SDhom    <-sd(scaffMat[scaffMat <= maxValueForHomDeletion])
+	
+#	allNoHom<-ifelse(is.na(allNoHom), 0, allNoHom)
+#	allNoHet<-ifelse(is.na(allNoHet), 0, allNoHet)
+#	allNoDels<-ifelse(is.na(allNoDels), 0, allNoDels)
+#	hetAvg<-ifelse(is.na(hetAvg), 0, hetAvg)
+#	homAvg<-ifelse(is.na(homAvg), 0, homAvg)
+
+	arg0<-list(Dels3SigmaExon=dels3SigmaExon, AllAvg=allAvg, AllNoDelsAvg3SigmaExon=allNoDels,AllNoHomAvg=allNoHom, AllNoHetAvg=allNoHet, HetAvg=hetAvg, HomAvg=homAvg)
+	arg0<-c(arg0, AllSD=SDall, AllNoDels3SigmaExonSD=SDallNoDels,AllNoHomSD=SDallNoHom, AllNoHetSD=SDallNoHet, HetSD=SDhet, HomSD=SDhom)
+	#df<-data.frame(t(unlist(arg0)))
+	#df
+	arg0
 }
 
 
-getAllScaffoldAverages<-function(delsMat, localMat, exonsDF){
+getAllScaffoldAverages<-function(delsMat, localMat, exonsDF, showProgressBar = T){
 
+	if(showProgressBar) library(tcltk)
+	
+
+	delsMat$Dels3SigmaExon<-0
+	
 	delsMat$AllAvg<-1.0
-	delsMat$AllNoHomAvg<-1.0 
+	delsMat$AllSD<-0.0	
+
 	delsMat$AllNoHetAvg <-1.0
-	delsMat$AllNoDelsAvg<-1.0
-	for(i in 1:nrow(delsMat)) {
+	delsMat$AllNoHetSD<- 0.0
+
+	delsMat$AllNoHomAvg<-1.0 
+	delsMat$AllNoHomSD<-0.0
+
+	delsMat$AllNoDels3SigmaExonAVG<-0.0
+	delsMat$AllNoDels3SigmaExonSD<-1.0
+
+	delsMat$HetAvg<- 0.0
+    delsMat$HetSD<- 0.
+
+    delsMat$HomAvg<-0.0
+    delsMat$HomSD<-0.0
+
+   
+    
+    
+
+	total<-nrow(delsMat)
+	if(showProgressBar) pb <- tkProgressBar(title = "progress bar", min = 0, max = total, width = 300)
+	for(i in 1:total) {
 	    row <- delsMat[i,]
-	    print(row)
 	    tmpDF <- getScaffoldAverages(row$Scaffold, row$Library, localMat, exonsDF)
-	    print(tmpDF)
-	    delsMat[i,"AllAvg"]      <-tmpDF$AllAvg 		
-		delsMat[i,"AllNoHomAvg"] <-tmpDF$AllNoHomAvg  
-		delsMat[i,"AllNoHetAvg"] <-tmpDF$AllNoHetAvg 
-		delsMat[i,"AllNoDelsAvg"]<-tmpDF$AllNoDelsAvg
+	    delsMat[i,"AllSD"]                 <-tmpDF$AllSD
+	    delsMat[i,"AllAvg"]                <-tmpDF$AllAvg 		
+		delsMat[i,"AllNoHomAvg"]           <-tmpDF$AllNoHomAvg  
+		delsMat[i,"AllNoHetAvg"]           <-tmpDF$AllNoHetAvg 
+		delsMat[i,"AllNoDels3SigmaExonAVG"]<-tmpDF$AllNoDelsAvg3SigmaExon
+		delsMat[i,"HetAvg"]                <-tmpDF$HetAvg 
+		delsMat[i,"HomAvg"]                <-tmpDF$HomAvg
+		delsMat[i,"Dels3SigmaExon"]        <-tmpDF$Dels3SigmaExon
+				
+		delsMat[i,"AllNoHomSD"]            <-tmpDF$AllNoHomSD  
+		delsMat[i,"AllNoHetSD"]            <-tmpDF$AllNoHetSD 
+		delsMat[i,"AllNoDels3SigmaExonSD"] <-tmpDF$AllNoDels3SigmaExonSD
+		delsMat[i,"HetSD"]                 <-tmpDF$HetSD 
+		delsMat[i,"HomSD"]                 <-tmpDF$HomSD
+		
+		if(showProgressBar) setTkProgressBar(pb, i, label=paste( round(i/total*100, 0),"% done"))
 	}
+	if(showProgressBar) close(pb)
+	delsMat
 }
 
 
@@ -235,7 +295,6 @@ getWholeExonDeletions<-function(scaffoldsDF, exonsDF, localMat, sdLibs, deletion
 
 
 categorizeDeletions<-function(deletionsMelted, exonsDF){
-
 	all_scaffold_counts <- sort(table(exonsDF$Scaffold))
 	scaffoldsDF <- as.data.frame(rownames(all_scaffold_counts))
 	names(scaffoldsDF)[1]<-"Scaffold"
