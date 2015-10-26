@@ -1,5 +1,5 @@
 
-plotLibraryOnScaffold <- function(contig, library, df, mat, dels,samplesSD  ){
+plotLibraryOnScaffold <- function(contig, library, df, mat, dels, samplesSD, avgs  ){
 	library(ggplot2)
 	tempExons<-rownames(subset(df,Scaffold==contig))
 	tmpMat<-mat[tempExons,]
@@ -25,17 +25,24 @@ plotLibraryOnScaffold <- function(contig, library, df, mat, dels,samplesSD  ){
 
 	plot_Data <- ddply(innerDf, .(Start), mutate, Q1=quantile(value, 1/4), Q3=quantile(value, 3/4), IQR=Q3-Q1, upper.limit=Q3+1.5*IQR, lower.limit=Q1-1.5*IQR)
 	plot_Data$Library <- plot_Data$Var2	
+
 	libNames <-c(library)
 	lines_plot_data<-subset(plot_Data, Library %in% library )
+	
+	lines_plot_data$MaxForHet<-0.5+lines_plot_data$sdExon
+
 	print(head(lines_plot_data))
+	
 	gg<- ggplot(plot_Data, aes(x=factor(Start), y=value))
 	gg<- gg + geom_errorbar(aes(ymax=1+3* sdExon, ymin=1-3* sdExon), colour='gray', alpha=0.75) 
 	gg<- gg + geom_boxplot(outlier.shape = NA)
 	#gg<-gg + stat_smooth() 
 	
 	gg<- gg+geom_line(data=lines_plot_data, aes(x=factor(Start), y=value,group=Library, colour=Library))
+	gg<- gg+geom_line(data=lines_plot_data, aes(x=factor(Start), y=MaxForHet,group="Max. for Het", colour="Max. for Het"))
 	#gg<-gg+geom_point(aes(colour=ValueType))
+	gg<- gg + geom_point(data=plot_Data[plot_Data$Library == library,], aes(x=factor(Start), y=value, col=factor(ValueType)))
 	#gg<- gg + coord_cartesian(ylim=c(0, 2))
-	#gg<- gg + ggtitle(paste("Libraries with deletions in \n ", contig))
+	gg<- gg + ggtitle(paste("Normalised coverage\n ", contig))
 	gg
 }

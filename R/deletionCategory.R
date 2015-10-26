@@ -190,29 +190,47 @@ getScaffoldAverages<-function(scaffold, library, localMat, exonsDF, minSigmaExon
 	maxForHetDel<-	0.5 + exonsToProcessDF$sdExon * minSigmaExonHet
 	maxForDel   <- 1 - 3*exonsToProcessDF$sdExon
 
-	dels3SigmaExon <- length(scaffMat[scaffMat <= maxForDel])
-	allAvg    <-mean(scaffMat)
-	allNoHom  <-mean(scaffMat[scaffMat > maxValueForHomDeletion])
-	allNoDels <-mean(scaffMat[scaffMat > maxForDel]) #Doesn't include anything below 3sigma exon
-	allNoHet  <-mean(scaffMat[scaffMat > maxForHetDel])
-	hetAvg    <-mean(scaffMat[scaffMat <= maxForHetDel])
-	homAvg    <-mean(scaffMat[scaffMat <= maxValueForHomDeletion])
+#	dels3SigmaExon <- length(scaffMat[scaffMat <= maxForDel])
 
-	SDall    <-sd(scaffMat)
-	SDallNoHom  <-sd(scaffMat[scaffMat > maxValueForHomDeletion])
-	SDallNoDels <-sd(scaffMat[scaffMat > maxForDel]) #Doesn't include anything below 3sigma exon
-	SDallNoHet  <-sd(scaffMat[scaffMat > maxForHetDel])
-	SDhet    <-sd(scaffMat[scaffMat <= maxForHetDel])
-	SDhom    <-sd(scaffMat[scaffMat <= maxValueForHomDeletion])
-	
-#	allNoHom<-ifelse(is.na(allNoHom), 0, allNoHom)
-#	allNoHet<-ifelse(is.na(allNoHet), 0, allNoHet)
-#	allNoDels<-ifelse(is.na(allNoDels), 0, allNoDels)
-#	hetAvg<-ifelse(is.na(hetAvg), 0, hetAvg)
-#	homAvg<-ifelse(is.na(homAvg), 0, homAvg)
+	#allAvg    <- scaffMat
+	allNoHom  <- scaffMat[scaffMat > maxValueForHomDeletion]
+	allNoDels <- scaffMat[scaffMat > maxForDel] #Doesn't include anything below 3sigma exon
+	allNoHet  <- scaffMat[scaffMat > maxForHetDel]
+	hetAvg    <- scaffMat[scaffMat <= maxForHetDel]
+	homAvg    <- scaffMat[scaffMat <= maxValueForHomDeletion]
 
-	arg0<-list(Dels3SigmaExon=dels3SigmaExon, AllAvg=allAvg, AllNoDelsAvg3SigmaExon=allNoDels,AllNoHomAvg=allNoHom, AllNoHetAvg=allNoHet, HetAvg=hetAvg, HomAvg=homAvg)
-	arg0<-c(arg0, AllSD=SDall, AllNoDels3SigmaExonSD=SDallNoDels,AllNoHomSD=SDallNoHom, AllNoHetSD=SDallNoHet, HetSD=SDhet, HomSD=SDhom)
+	LENall    <-length(scaffMat )
+	LENallNoHom  <-length(allNoHom )
+	LENallNoDels <-length(allNoDels) #Doesn't include anything below 3sigma exon
+	LENallNoHet  <-length(allNoHet )
+	LENhet       <-length(hetAvg   )
+	LENhom       <-length(homAvg   )
+
+	AVGall       <-mean(scaffMat )
+	AVGallNoHom  <-mean(allNoHom )
+	AVGallNoDels <-mean(allNoDels) #Doesn't include anything below 3sigma exon
+	AVGallNoHet  <-mean(allNoHet )
+	AVGhet       <-mean(hetAvg   )
+	AVGhom       <-mean(homAvg   )
+
+    SDall       <-sd(scaffMat )
+	SDallNoHom  <-sd(allNoHom )
+	SDallNoDels <-sd(allNoDels) #Doesn't include anything below 3sigma exon
+	SDallNoHet  <-sd(allNoHet )
+	SDhet       <-sd(hetAvg   )
+	SDhom       <-sd(homAvg   )
+
+	arg0<-c(Scaffold=toString(scaffold), Library=toString(library), 
+		AllCount=LENall, AllAvg=AVGall, AllSD=SDall,
+		NoHomCount=LENallNoHom, NoHomAvg=AVGallNoHom, NoHomSD=SDallNoHom,
+		No3SigmaDelCount=LENallNoDels, No3SigmaDelAvg=AVGallNoDels, No3SigmaDelSD=SDallNoDels,
+		NoHetCount=LENallNoHet, NoHetAvg=AVGallNoHet, NoHetSD=SDallNoHet,
+		HetCount=LENhet, HetAvg=AVGhet, HetSD=SDhet,
+		HomCount=LENhom, HomAvg=AVGhom, HomSD=SDhom
+		)
+
+	#arg0<-list(Dels3SigmaExon=dels3SigmaExon, AllAvg=allAvg, AllNoDelsAvg3SigmaExon=allNoDels,AllNoHomAvg=allNoHom, AllNoHetAvg=allNoHet, HetAvg=hetAvg, HomAvg=homAvg)
+	#arg0<-c(arg0, AllSD=SDall, AllNoDels3SigmaExonSD=SDallNoDels,AllNoHomSD=SDallNoHom, AllNoHetSD=SDallNoHet, HetSD=SDhet, HomSD=SDhom)
 	#df<-data.frame(t(unlist(arg0)))
 	#df
 	arg0
@@ -224,54 +242,28 @@ getAllScaffoldAverages<-function(delsMat, localMat, exonsDF, showProgressBar = T
 	if(showProgressBar) library(tcltk)
 	
 
-	delsMat$Dels3SigmaExon<-0
-	
-	delsMat$AllAvg<-1.0
-	delsMat$AllSD<-0.0	
-
-	delsMat$AllNoHetAvg <-1.0
-	delsMat$AllNoHetSD<- 0.0
-
-	delsMat$AllNoHomAvg<-1.0 
-	delsMat$AllNoHomSD<-0.0
-
-	delsMat$AllNoDels3SigmaExonAVG<-0.0
-	delsMat$AllNoDels3SigmaExonSD<-1.0
-
-	delsMat$HetAvg<- 0.0
-    delsMat$HetSD<- 0.
-
-    delsMat$HomAvg<-0.0
-    delsMat$HomSD<-0.0
-
-   
-    
-    
-
 	total<-nrow(delsMat)
+
+    df <- data.frame(Scaffold=rep("", total), Library=rep("", total), 
+		AllCount=rep(NA, total), AllAvg=rep(NA, total), AllSD=rep(NA, total),
+		NoHomCount=rep(NA, total), NoHomAvg=rep(NA, total), NoHomSD=rep(NA, total),
+		No3SigmaDelCount=rep(NA, total), No3SigmaDelAvg=rep(NA, total), No3SigmaDelSD=rep(NA, total),
+		NoHetCount=rep(NA, total), NoHetAvg=rep(NA, total), NoHetSD=rep(NA, total),
+		HetCount=rep(NA, total), HetAvg=rep(NA, total), HetSD=rep(NA, total),
+		HomCount=rep(NA, total), HomAvg=rep(NA, total), HomSD=rep(NA, total),
+		stringsAsFactors=FALSE)
+
+
 	if(showProgressBar) pb <- tkProgressBar(title = "progress bar", min = 0, max = total, width = 300)
 	for(i in 1:total) {
 	    row <- delsMat[i,]
-	    tmpDF <- getScaffoldAverages(row$Scaffold, row$Library, localMat, exonsDF)
-	    delsMat[i,"AllSD"]                 <-tmpDF$AllSD
-	    delsMat[i,"AllAvg"]                <-tmpDF$AllAvg 		
-		delsMat[i,"AllNoHomAvg"]           <-tmpDF$AllNoHomAvg  
-		delsMat[i,"AllNoHetAvg"]           <-tmpDF$AllNoHetAvg 
-		delsMat[i,"AllNoDels3SigmaExonAVG"]<-tmpDF$AllNoDelsAvg3SigmaExon
-		delsMat[i,"HetAvg"]                <-tmpDF$HetAvg 
-		delsMat[i,"HomAvg"]                <-tmpDF$HomAvg
-		delsMat[i,"Dels3SigmaExon"]        <-tmpDF$Dels3SigmaExon
-				
-		delsMat[i,"AllNoHomSD"]            <-tmpDF$AllNoHomSD  
-		delsMat[i,"AllNoHetSD"]            <-tmpDF$AllNoHetSD 
-		delsMat[i,"AllNoDels3SigmaExonSD"] <-tmpDF$AllNoDels3SigmaExonSD
-		delsMat[i,"HetSD"]                 <-tmpDF$HetSD 
-		delsMat[i,"HomSD"]                 <-tmpDF$HomSD
+	    df[i, ] <- getScaffoldAverages(row$Scaffold, row$Library, localMat, exonsDF)
+	   
 		
 		if(showProgressBar) setTkProgressBar(pb, i, label=paste( round(i/total*100, 0),"% done"))
 	}
 	if(showProgressBar) close(pb)
-	delsMat
+	df
 }
 
 
