@@ -7,3 +7,4 @@ Depends: R (>= 3.2.2)
 License: MIT 
 LazyData: true
 Imports: e1071, ggplot2, plyr, reshape2, sqldf
+VignetteBuilder: knitr
