@@ -58,7 +58,7 @@ readCoverageTable<-function(filename){
 
 
 #' Prepares the dataframe with the information per exon. This parses the rownames to get the scaffold
-#' Start and end. It also calculates the exon length
+#' Start and end. It also calculates the exon length and the starad deviation of each exon. 
 #' @param mat: The matrix with the data
 #' @return A data frame with the following rows: Exon, Scaffold, Start, End, ExonL (exon length)
 getExonsDF<-function(mat){
@@ -220,13 +220,16 @@ getScaffoldAverages<-function(scaffold, library, localMat, exonsDF, minSigmaExon
 	SDhet       <-sd(hetAvg   )
 	SDhom       <-sd(homAvg   )
 
+	score 		<- LENhet/LENallNoDels
+
 	arg0<-c(Scaffold=toString(scaffold), Library=toString(library), 
 		AllCount=LENall, AllAvg=AVGall, AllSD=SDall,
 		NoHomCount=LENallNoHom, NoHomAvg=AVGallNoHom, NoHomSD=SDallNoHom,
 		No3SigmaDelCount=LENallNoDels, No3SigmaDelAvg=AVGallNoDels, No3SigmaDelSD=SDallNoDels,
 		NoHetCount=LENallNoHet, NoHetAvg=AVGallNoHet, NoHetSD=SDallNoHet,
 		HetCount=LENhet, HetAvg=AVGhet, HetSD=SDhet,
-		HomCount=LENhom, HomAvg=AVGhom, HomSD=SDhom
+		HomCount=LENhom, HomAvg=AVGhom, HomSD=SDhom,
+		Score=score
 		)
 
 	#arg0<-list(Dels3SigmaExon=dels3SigmaExon, AllAvg=allAvg, AllNoDelsAvg3SigmaExon=allNoDels,AllNoHomAvg=allNoHom, AllNoHetAvg=allNoHet, HetAvg=hetAvg, HomAvg=homAvg)
@@ -236,6 +239,16 @@ getScaffoldAverages<-function(scaffold, library, localMat, exonsDF, minSigmaExon
 	arg0
 }
 
+getDeletionScore<-function(df) {
+	ret <- as.numeric(df$HetCount) / as.numeric(df$No3SigmaDelCount)
+	ret
+}
+
+getDeletionCategory<-function(df,threshold=0.8) {
+	ratio<- as.numeric(df$HomCount) / as.numeric(df$HetCount)  > threshold
+	type<-ifelse(ratio, 'Hom', 'Het')
+	type
+}
 
 getAllScaffoldAverages<-function(delsMat, localMat, exonsDF, showProgressBar = T){
 
