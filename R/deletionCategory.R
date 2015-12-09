@@ -250,6 +250,50 @@ getDeletionCategory<-function(df,threshold=0.8) {
 	type
 }
 
+
+getDeletionsPerCM<-function(geneticMap,selectedDels, mat){
+    library(sqldf)
+    selectedDels$category<-getDeletionCategory(selectedDels)
+    exonCounts<-sqldf('SELECT Scaffold, Count(*) as exonCount from df group by Scaffold')
+    usedScaffoldsPerCM<-sqldf('SELECT chr, cM, count(*) as ScaffoldCount
+FROM geneticMap 
+LEFT JOIN exonCounts on Scaffold=contig  
+WHERE exonCount > 9
+GROUP BY chr, CM
+ORDER BY  chr, cM')
+    
+    homDels<-sqldf("SELECT chr, cM, Library,  count(*) as HomDels 
+FROM geneticMap
+LEFT JOIN selectedDels on Scaffold = contig
+WHERE category = 'Hom'
+GROUP BY chr, cM, Library")
+    hetDels<-sqldf("SELECT chr, cM, Library,  count(*) as HetDels 
+FROM geneticMap
+LEFT JOIN selectedDels on Scaffold = contig
+WHERE category = 'Het'
+GROUP BY chr, cM, Library")
+    libraries<-data.frame(Library=colnames(mat))
+    mapsForLibraries<-sqldf("SELECT * FROM usedScaffoldsPerCM, libraries ")
+    tableWithAllDeletions<-sqldf(
+"SELECT mapsForLibraries.*,
+    ifnull(hetDels.HetDels, 0) as HetDels, 
+    ifnull(homDels.HomDels, 0) as HomDels
+FROM mapsForLibraries
+LEFT JOIN hetDels 
+    ON  mapsForLibraries.chr     = hetDels.chr
+    AND mapsForLibraries.cM      = hetDels.cM 
+    AND mapsForLibraries.Library = hetDels.Library 
+LEFT JOIN homDels 
+    ON  mapsForLibraries.chr     = homDels.chr
+    AND mapsForLibraries.cM      = homDels.cM 
+    AND mapsForLibraries.Library = homDels.Library ")
+
+    tableWithAllDeletions$hetDelsPer<-tableWithAllDeletions$HetDels/tableWithAllDeletions$ScaffoldCount
+    tableWithAllDeletions$homDelsPer<-tableWithAllDeletions$HomDels/tableWithAllDeletions$ScaffoldCount
+    tableWithAllDeletions
+}
+
+
 getAllScaffoldAverages<-function(delsMat, localMat, exonsDF, showProgressBar = T){
 
 	if(showProgressBar) library(tcltk)

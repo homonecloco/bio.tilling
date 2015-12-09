@@ -64,3 +64,22 @@ plotLibraryOnScaffold <- function(contig, library, df, mat, dels, samplesSD, avg
 	gg<- gg + ggtitle(paste("Normalised coverage\n ", contig))
 	gg
 }
+
+plotDeletionsInScaffold <-function(geneticMapWithDeletions, chromosome, library){
+	library(ggplot2)
+
+	toPlot  <-geneticMapWithDeletions[geneticMapWithDeletions$chr == chromosome & geneticMapWithDeletions$Library == library,]
+	toPlot <- toPlot[toPlot$ScaffoldCount > 1,]
+    hetPlot <- toPlot$hetDels
+	homPlot <- toPlot$homDels
+	formatedToPlotHet <- data.frame(chr=toPlot$chr, cM=toPlot$cM, type="hetDel", value=hetPlot)
+	formatedToPlotHom <- data.frame(chr=toPlot$chr, cM=toPlot$cM, type="homDel", value=homPlot)
+	mixPlot<-rbind(formatedToPlotHet, formatedToPlotHom)
+	ggplot(data=mixPlot, aes(x=cM, y=value, group=type, colour=type)) +
+    geom_line() + geom_point()  +
+    scale_y_log10(limits=c(0.001, 1), breaks=c(0.1, 0.25, 0.5, 0.75, 1)) +  
+    ylab("Percentage of scaffolds with deletion") +
+    xlab("centiMorgan") + 
+    ggtitle(paste("Chromosome", chromosome , "\n", library))
+
+}
