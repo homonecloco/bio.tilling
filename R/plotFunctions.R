@@ -48,9 +48,7 @@ plotLibraryOnScaffold <- function(contig, library, df, mat, dels, samplesSD, avg
 	lines_plot_data<-subset(plot_Data, Library %in% library )
 	
 	lines_plot_data$MaxForHet<-0.5+lines_plot_data$sdExon
-
-	print(head(lines_plot_data))
-	
+		
 	gg<- ggplot(plot_Data, aes(x=factor(Start), y=value))
 	gg<- gg + geom_errorbar(aes(ymax=1+3* sdExon, ymin=1-3* sdExon), colour='gray', alpha=0.75) 
 	gg<- gg + geom_boxplot(outlier.shape = NA)
