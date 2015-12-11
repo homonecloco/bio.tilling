@@ -308,6 +308,7 @@ getAllScaffoldAverages<-function(delsMat, localMat, exonsDF, showProgressBar = T
 		NoHetCount=rep(NA, total), NoHetAvg=rep(NA, total), NoHetSD=rep(NA, total),
 		HetCount=rep(NA, total), HetAvg=rep(NA, total), HetSD=rep(NA, total),
 		HomCount=rep(NA, total), HomAvg=rep(NA, total), HomSD=rep(NA, total),
+		Score=rep(NA, total),
 		stringsAsFactors=FALSE)
 
 
