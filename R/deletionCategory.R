@@ -49,7 +49,7 @@ filterLowQualityExons <-function(mat, maxSD=0.3){
 #' 
 #' @param filename: The filename with the table. 
 readCoverageTable<-function(filename){
-	counts<-read.table(filename, header=TRUE, sep="\t")
+	counts<-read.csv(filename, header=TRUE, sep="\t",row.names=1)
 	counts$remove <-NULL
 	counts<-counts[,colSums(counts,na.rm=T)>0]
 	counts
@@ -180,6 +180,37 @@ getAllScaffoldsWithDeletions<-function(exonsDF, delsDF,  minValidExonLength=9){
 	mergedScaffDF<-na.omit(mergedScaffDF)
 	mergedScaffDF<-mergedScaffDF[mergedScaffDF$validExons > minValidExonLength,]
 	mergedScaffDF
+}
+
+getScaffoldAveragesByIndex<-function(index, delsMat, localMat, exonsDF){
+	row <- delsMat[index,]
+	ret <- getScaffoldAverages(row$Scaffold, row$Library, localMat, exonsDF)
+	ret
+}
+
+
+getAllScaffoldAveragesParallel<-function(delsMat, localMat, exonsDF, cores=2){
+    library(parallel)
+
+	total<-nrow(delsMat)
+    df <- data.frame(Scaffold=rep("", total), Library=rep("", total), 
+		AllCount=rep(NA, total), AllAvg=rep(NA, total), AllSD=rep(NA, total),
+		NoHomCount=rep(NA, total), NoHomAvg=rep(NA, total), NoHomSD=rep(NA, total),
+		No3SigmaDelCount=rep(NA, total), No3SigmaDelAvg=rep(NA, total), No3SigmaDelSD=rep(NA, total),
+		NoHetCount=rep(NA, total), NoHetAvg=rep(NA, total), NoHetSD=rep(NA, total),
+		HetCount=rep(NA, total), HetAvg=rep(NA, total), HetSD=rep(NA, total),
+		HomCount=rep(NA, total), HomAvg=rep(NA, total), HomSD=rep(NA, total),
+		Score=rep(NA, total),
+		stringsAsFactors=FALSE)
+    
+    cl <- makeForkCluster(nnodes=cores)
+    result <-parLapply(cl,1:total, getScaffoldAveragesByIndex,delsMat, localMat, exonsDF)
+    stopCluster(cl)
+    
+    for(i in 1:total) {   
+	    df[i, ] <- unlist(result[i])
+	}
+	df
 }
 
 getScaffoldAverages<-function(scaffold, library, localMat, exonsDF, minSigmaExonHet=1, maxValueForHomDeletion=0.1, minSigmaExon=3) {
