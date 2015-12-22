@@ -308,8 +308,8 @@ LEFT JOIN homDels
     AND mapsForLibraries.cM      = homDels.cM 
     AND mapsForLibraries.Library = homDels.Library ")
 
-    tableWithAllDeletions$hetDelsPer<-tableWithAllDeletions$HetDels/tableWithAllDeletions$ScaffoldCount
-    tableWithAllDeletions$homDelsPer<-tableWithAllDeletions$HomDels/tableWithAllDeletions$ScaffoldCount
+    tableWithAllDeletions$hetDelsPer<-as.numeric(tableWithAllDeletions$HetDels)/as.numeric(tableWithAllDeletions$ScaffoldCount)
+    tableWithAllDeletions$homDelsPer<-as.numeric(tableWithAllDeletions$HomDels)/as.numeric(tableWithAllDeletions$ScaffoldCount)
     tableWithAllDeletions
 }
 
