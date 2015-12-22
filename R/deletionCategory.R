@@ -193,20 +193,11 @@ getAllScaffoldAveragesParallel<-function(delsMat, localMat, exonsDF, cores=2){
     library(parallel)
 
 	total<-nrow(delsMat)
-    df <- data.frame(Scaffold=rep("", total), Library=rep("", total), 
-		AllCount=rep(NA, total), AllAvg=rep(NA, total), AllSD=rep(NA, total),
-		NoHomCount=rep(NA, total), NoHomAvg=rep(NA, total), NoHomSD=rep(NA, total),
-		No3SigmaDelCount=rep(NA, total), No3SigmaDelAvg=rep(NA, total), No3SigmaDelSD=rep(NA, total),
-		NoHetCount=rep(NA, total), NoHetAvg=rep(NA, total), NoHetSD=rep(NA, total),
-		HetCount=rep(NA, total), HetAvg=rep(NA, total), HetSD=rep(NA, total),
-		HomCount=rep(NA, total), HomAvg=rep(NA, total), HomSD=rep(NA, total),
-		Score=rep(NA, total),
-		stringsAsFactors=FALSE)
-    
     cl <- makeForkCluster(nnodes=cores)
     
     result <-parSapply(cl,1:total, getScaffoldAveragesByIndex,delsMat, localMat, exonsDF)
-    df<- data.frame(t(result))   
+    df<- data.frame(t(result), stringsAsFactors=FALSE))   
+	df[, 3:21] <- sapply(df[, 3:21], as.numeric)
     stopCluster(cl)
 	df
 }
