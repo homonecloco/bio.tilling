@@ -196,7 +196,7 @@ getAllScaffoldAveragesParallel<-function(delsMat, localMat, exonsDF, cores=2){
     cl <- makeForkCluster(nnodes=cores)
     
     result <-parSapply(cl,1:total, getScaffoldAveragesByIndex,delsMat, localMat, exonsDF)
-    df<- data.frame(t(result), stringsAsFactors=FALSE))   
+    df<- data.frame(t(result), stringsAsFactors=FALSE)   
 	df[, 3:21] <- sapply(df[, 3:21], as.numeric)
     stopCluster(cl)
 	df
