@@ -80,4 +80,36 @@ plotDeletionsInScaffold <-function(geneticMapWithDeletions, chromosome, library)
     xlab("centiMorgan") + 
     ggtitle(paste("Chromosome", chromosome , "\n", library))
 
+
+prepareForHeatmap<-function(tableWithAllDels, column='hetDelsPer'){
+    names_hm<-paste(tableWithAllDels$chr,tableWithAllDels$cm, sep="_")
+    preHMHet<-cbind(names_hm,tableWithAllDels$Library, tableWithAllDels[column]) 
+
+    colnames(preHMHet)<-c("cM","Library","Percentage")
+    preHMHet<-data.frame(preHMHet)
+    preHMHet$Percentage <- as.numeric(as.character(preHMHet$Percentage))
+    preHMreshaped<-reshape(preHMHet, idvar=c("cM"), timevar="Library", direction="wide")
+    rownames(preHMreshaped) <- preHMreshaped[,1]
+    preHMreshaped[,1] <- NULL
+    hmMat<-as.matrix(preHMreshaped)
+    hmMat
+
+}
+
+plotDeletionsHeatmap <-function(geneticMap,selectedDels, libraries, minExonCount=4, prefix="heatmap"){
+    tableWithAllDels <- getDeletionsPerCM(geneticMap,selectedDels, libraries, minExonCount=minExonCount)
+    
+    
+    hmMat<-prepareForHeatmap(tableWithAllDels, column='hetDelsPer')        
+    filename <- paste0(prefix,"_het.png")
+    png(filename = filename, height = 20000, width = 15000)
+    heatmap.2(hmMat,dendrogram='none' ,keysize=0.05, Rowv=NA, Colv=NA, col = rich.colors(32), scale="none", margins=c(5,10), trace='none')
+    dev.off()
+    
+    hmMat<-prepareForHeatmap(tableWithAllDels, column='homDelsPer')        
+    filename <- paste0(prefix,"_hom.png")
+    png(filename = filename, height = 20000, width = 15000)
+    heatmap.2(hmMat,dendrogram='none' ,keysize=0.05, Rowv=NA, Colv=NA, col = rich.colors(32), scale="none", margins=c(5,10), trace='none')
+    dev.off()
+}
 }
