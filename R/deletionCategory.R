@@ -269,29 +269,44 @@ getDeletionCategory<-function(df,threshold=0.8) {
 	type<-ifelse(ratio, 'Hom', 'Het')
 	type
 }
-
-getDeletionsPerCM<-function(geneticMap,selectedDels, libraries, minExonCount=5){
+getDeletionsPerCM<-function(geneticMap,
+                            selectedDels, 
+                            libraries, 
+                            df,
+                            minExonCount=5, 
+                            groupByCM=FALSE,
+                            chromosome=NULL){
     library(sqldf)
-    selectedDels$category<-getDeletionCategory(selectedDels)
-    exonCounts<-sqldf('SELECT Scaffold, Count(*) as exonCount from df group by Scaffold')
-    exonQuery<-paste0('SELECT chr, cM, count(*) as ScaffoldCount
+    selectedDels$category<-getDeletionCategory(selectedDels, threshold=0.75)
+        
+    cmGroup<-ifelse(groupByCM,"round(cm)","cm")
+    cmWhere<-ifelse(is.null(chromosome)," 1 ", paste0( " chr='", chromosome, "' "))
+    exonCounts<-sqldf('SELECT Scaffold, Count(*) as exonCount FROM df group by Scaffold')
+    
+    exonQuery<-paste0('SELECT chr, ',cmGroup ,' as cM, count(*) as ScaffoldCount
 FROM geneticMap 
 LEFT JOIN exonCounts on Scaffold=contig  
-WHERE exonCount > ', minExonCount, ' GROUP BY chr, CM
-ORDER BY  chr, cM')
+WHERE exonCount > ', minExonCount, ' AND ', cmWhere,
+' GROUP BY chr, ',cmGroup ,'
+ORDER BY  chr, ',cmGroup)
     usedScaffoldsPerCM<-sqldf(exonQuery)
     
-    homDels<-sqldf("SELECT chr, cM, Library,  count(*) as HomDels 
+    homDelsQuery<-paste0("SELECT chr, ",cmGroup ," as cM, Library,  count(*) as HomDels 
 FROM geneticMap
 LEFT JOIN selectedDels on Scaffold = contig
-WHERE category = 'Hom'
-GROUP BY chr, cM, Library")
-    hetDels<-sqldf("SELECT chr, cM, Library,  count(*) as HetDels 
+WHERE category = 'Hom' AND ", cmWhere,
+" GROUP BY chr, ",cmGroup ,", Library")
+    homDels<-sqldf(homDelsQuery)
+    
+    hetDelsQuery<-paste0("SELECT chr, ",cmGroup ," as cM, Library,  count(*) as HetDels 
 FROM geneticMap
 LEFT JOIN selectedDels on Scaffold = contig
-WHERE category = 'Het'
-GROUP BY chr, cM, Library")
+WHERE category = 'Het' AND ", cmWhere,
+" GROUP BY chr, ",cmGroup ,", Library")
+    hetDels<-sqldf(hetDelsQuery)
+    
     mapsForLibraries<-sqldf("SELECT * FROM usedScaffoldsPerCM, libraries ")
+    
     tableWithAllDeletions<-sqldf(
 "SELECT mapsForLibraries.*,
     ifnull(hetDels.HetDels, 0) as HetDels, 
@@ -375,4 +390,23 @@ categorizeDeletions<-function(deletionsMelted, exonsDF){
 	deletions<-getWholeExonDeletions(scaffoldsDF, exonsDF, localMat, sdLibs, maxValueForDeletion=0.1, minSigmaExon=3, minSigmaLib=3)
 	deletions
 }
+
+
+getHomSelectedDeletions<-function(selectedDels, geneticMap, threshold=0.75){
+    selectedDels$category<-getDeletionCategory(selectedDels,threshold=threshold)
+    
+    selected <- sqldf("SELECT chr, cM, Scaffold, Library, AllAvg, AllSD FROM selectedDels
+LEFT JOIN geneticMap ON contig=Scaffold  WHERE category = 'Hom'")
+    scaffs <- sqldf("SELECT Scaffold, count(Scaffold) as delsPerScaffold FROM selected group by Scaffold")
+    libs <- sqldf("SELECT Library, count(Library) as delsPerLibrary FROM selected group by Library")
+    
+    sel2 <- sqldf("SELECT selected.*, delsPerScaffold, delsPerLibrary from 
+    	selected JOIN scaffs on selected.Scaffold = scaffs.Scaffold
+    	JOIN libs on selected.Library = libs.Library" )
+
+    sel2
+
+}
+
+
 

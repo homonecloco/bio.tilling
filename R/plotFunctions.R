@@ -1,21 +1,4 @@
-plotDeletionsInScaffold <-function(geneticMapWithDeletions, chromosome, library){
-	library(ggplot2)
 
-	toPlot  <-geneticMapWithDeletions[geneticMapWithDeletions$chr == chromosome & geneticMapWithDeletions$Library == library,]
-	toPlot <- toPlot[toPlot$ScaffoldCount > 1,]
-	hetPlot <- toPlot$hetDels
-	homPlot <- toPlot$homDels
-	formatedToPlotHet <- data.frame(chr=toPlot$chr, cM=toPlot$cM, type="hetDel", value=hetPlot)
-	formatedToPlotHom <- data.frame(chr=toPlot$chr, cM=toPlot$cM, type="homDel", value=homPlot)
-	mixPlot<-rbind(formatedToPlotHet, formatedToPlotHom)
-	ggplot(data=mixPlot, aes(x=cM, y=value, group=type, colour=type)) +
-	geom_line() + geom_point()  +
-	scale_y_log10(limits=c(0.001, 1), breaks=c(0.1, 0.25, 0.5, 0.75, 1)) +  
-	ylab("Percentage of scaffolds with deletion") +
-	xlab("centiMorgan") + 
-	ggtitle(paste("Chromosome", chromosome , "\n", library))
-
-}
 
 plotLibraryOnScaffold <- function(contig, library, df, mat, dels, samplesSD, avgs  ){
 	library(ggplot2)
@@ -63,40 +46,50 @@ plotLibraryOnScaffold <- function(contig, library, df, mat, dels, samplesSD, avg
 	gg
 }
 
+
 plotDeletionsInScaffold <-function(geneticMapWithDeletions, chromosome, library){
 	library(ggplot2)
 
 	toPlot  <-geneticMapWithDeletions[geneticMapWithDeletions$chr == chromosome & geneticMapWithDeletions$Library == library,]
 	toPlot <- toPlot[toPlot$ScaffoldCount > 1,]
-	hetPlot <- toPlot$hetDels
+    hetPlot <- toPlot$hetDels
 	homPlot <- toPlot$homDels
 	formatedToPlotHet <- data.frame(chr=toPlot$chr, cM=toPlot$cM, type="hetDel", value=hetPlot)
 	formatedToPlotHom <- data.frame(chr=toPlot$chr, cM=toPlot$cM, type="homDel", value=homPlot)
 	mixPlot<-rbind(formatedToPlotHet, formatedToPlotHom)
 	ggplot(data=mixPlot, aes(x=cM, y=value, group=type, colour=type)) +
-	geom_line() + geom_point()  +
-	scale_y_log10(limits=c(0.001, 1), breaks=c(0.1, 0.25, 0.5, 0.75, 1)) +  
-	ylab("Percentage of scaffolds with deletion") +
-	xlab("centiMorgan") + 
-	ggtitle(paste("Chromosome", chromosome , "\n", library))
+    geom_line() + geom_point()  +
+    scale_y_log10(limits=c(0.001, 1), breaks=c(0.1, 0.25, 0.5, 0.75, 1)) +  
+    ylab("Percentage of scaffolds with deletion") +
+    xlab("centiMorgan") + 
+    ggtitle(paste("Chromosome", chromosome , "\n", library))
+
 }
 
-prepareForHeatmap<-function(tableWithAllDels, column='hetDelsPer'){
-	names_hm<-paste(tableWithAllDels$chr,tableWithAllDels$cm, sep="_")
-	preHMHet<-cbind(names_hm,tableWithAllDels$Library, tableWithAllDels[column]) 
+prepareForHeatmap<-function(tableWithAllDels, 
+                            column='hetDelsPer',
+                            sortBySum=False
+                           ){
+    
+    names_hm<-paste(tableWithAllDels$chr,tableWithAllDels$cM, sep="_")
+    preHMHet<-cbind(names_hm,tableWithAllDels$Library, tableWithAllDels[column]) 
 
-	colnames(preHMHet)<-c("cM","Library","Percentage")
-	preHMHet<-data.frame(preHMHet)
-	preHMHet$Percentage <- as.numeric(as.character(preHMHet$Percentage))
-	preHMreshaped<-reshape(preHMHet, idvar=c("cM"), timevar="Library", direction="wide")
-	rownames(preHMreshaped) <- preHMreshaped[,1]
-	preHMreshaped[,1] <- NULL
-	hmMat<-as.matrix(preHMreshaped)
-	hmMat
+    colnames(preHMHet)<-c("cM","Library","Percentage")
+    preHMHet<-data.frame(preHMHet)
+    preHMHet$Percentage <- as.numeric(as.character(preHMHet$Percentage))
+    preHMreshaped<-reshape(preHMHet, idvar=c("cM"), timevar="Library", direction="wide")
+    rownames(preHMreshaped) <- preHMreshaped[,1]
+    preHMreshaped[,1] <- NULL
+    hmMat<-as.matrix(preHMreshaped)
+    if(sortBySum){
+        hmMat<-hmMat[,order(colSums(hmMat))]
+    }
+    hmMat
 
 }
 
 plotDeletionsHeatmap <-function(geneticMap,selectedDels, libraries, minExonCount=4, prefix="heatmap"){
+	library(gplots)
 	tableWithAllDels <- getDeletionsPerCM(geneticMap,selectedDels, libraries, minExonCount=minExonCount)
 	
 	
@@ -113,3 +106,31 @@ plotDeletionsHeatmap <-function(geneticMap,selectedDels, libraries, minExonCount
 	dev.off()
 }
 
+
+plotPerChromosome<-function(geneticMap,selectedDels, libraries,df, minExonCount=9,
+                       groupByCM=T, chr='1D',column='homDelsPer'){
+    library(gplots)
+    dels<-getDeletionsPerCM(geneticMap,selectedDels, libraries,df, minExonCount=minExonCount,
+                       groupByCM=groupByCM, chr=chr)
+    hmMat<-prepareForHeatmap(dels, column, sortBySum=TRUE)  
+    libNames<-colnames(hmMat)
+    wtIndeces<-grep('WT', libNames, fixed=T)
+    mutIndeces<-grep('WT', libNames, fixed=T, invert=T)
+    wtHm<-hmMat[,wtIndeces]
+    mutHm<-hmMat[,mutIndeces]
+    
+    mutHm<-mutHm[,colSums(mutHm) > 0]
+
+    merged<-cbind(mutHm,wtHm )
+    wtCount=ncol(mutHm) + 0.5
+    my_palette <- colorRampPalette(c("red", "yellow", "green"))(n = 299)    
+    merged<-log((merged + 0.0005) *100)
+    #merged<-ifelse(merged == -Inf, 0, merged)
+    code<-paste0("heatmap.2(merged,dendrogram='none' ,keysize=1, Rowv=NA, Colv=NA, 
+              col = colorRampPalette(c('#ffffcc','#a1dab4','#41b6c4','#2c7fb8','#253494'))(n = 299),
+              scale='none', margins=c(10,10),
+              add.expr = abline(v = ",wtCount ," , col = 'black',lwd=3),
+              trace='none')")
+    eval(parse(text=code))
+    
+}

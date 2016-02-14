@@ -30,7 +30,7 @@ selectedDels<-deslWithAVGs[deslWithAVGs$Score>=1,]
 
 
 
-tableWithAllDels <- getDeletionsPerCM(geneticMap,selectedDels, mat)
+
 
 
 write.csv(dels, file="dels.csv")
@@ -41,7 +41,9 @@ write.csv(libSD, file='libSD.csv')
 write.csv(mat, file='mat.csv')
 write.csv(scaffsWithDels, file='scaffsWithDels.csv')
 write.csv(selectedDels, file='selectedDels.csv')
-write.csv(tableWithAllDels, file='tableWithAllDels.csv')
+
+#tableWithAllDels <- getDeletionsPerCM(geneticMap,selectedDels, mat)
+#write.csv(tableWithAllDels, file='tableWithAllDels.csv')
 
 
 

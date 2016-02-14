@@ -2,3 +2,4 @@
 .Rhistory
 .ipynb_checkpoints
 .RData
+./docs/output_example
