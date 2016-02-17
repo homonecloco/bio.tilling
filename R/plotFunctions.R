@@ -108,14 +108,17 @@ plotDeletionsHeatmap <-function(geneticMap,selectedDels, libraries, minExonCount
 
 
 plotPerChromosome<-function(geneticMap,selectedDels, libraries,df, minExonCount=9,
-                       groupByCM=T, chr='1D',column='homDelsPer'){
+                       groupByCM=T, chr='1D',column='homDelsPer', wtGrep='WT', 
+                       parseLibFun=identity,  groupByCMPrecision=0){
     library(gplots)
     dels<-getDeletionsPerCM(geneticMap,selectedDels, libraries,df, minExonCount=minExonCount,
-                       groupByCM=groupByCM, chr=chr)
+                       groupByCM=groupByCM, chr=chr, groupByCMPrecision=groupByCMPrecision)
     hmMat<-prepareForHeatmap(dels, column, sortBySum=TRUE)  
+    colnames(hmMat)<-sapply( colnames(hmMat), parseLibFun)
     libNames<-colnames(hmMat)
-    wtIndeces<-grep('WT', libNames, fixed=T)
-    mutIndeces<-grep('WT', libNames, fixed=T, invert=T)
+    print(libNames)
+    wtIndeces<-grep(wtGrep, libNames, fixed=T)
+    mutIndeces<-grep(wtGrep, libNames, fixed=T, invert=T)
     wtHm<-hmMat[,wtIndeces]
     mutHm<-hmMat[,mutIndeces]
     

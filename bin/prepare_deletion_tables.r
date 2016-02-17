@@ -32,6 +32,8 @@ source(plot_file)
 args <- commandArgs(trailingOnly = TRUE)
 
 folder<-args[1]
+parser<-ifelse(args[2], args[2], "identity")
+parser<-args[2]
 
 setwd(folder)
 
@@ -45,7 +47,8 @@ mat<-sqldf('select * from f', dbname = tempfile(), file.format = list(sep=',',he
 deslWithAVGs<-read.csv('deslWithAVGs.csv')
 df<-read.csv('df.csv')
 geneticMap<-read.csv('geneticMap.csv')
-libSD<-read.csv('libSD.csv')
+libSD<-getLibSD(mat)
+#libSD<-read.csv('libSD.csv')
 scaffsWithDels<-read.csv('scaffsWithDels.csv')
 selectedDels<-read.csv('selectedDels.csv')
 
@@ -53,21 +56,33 @@ chromosomes<-unique(geneticMap$chr)
 
 libraries<-data.frame(Library=colnames(mat))
 
+cadenzaParseName <- function(x) {
+    vect<-strsplit(x,"_")
+    val <- vect[[1]][2] 
+    #print(val)
+    #print(vect)
+    return (val)
+
+}
+
+kronosParseNames<- function(x){
+    t2<-strsplit(x,"[.]")[[1]][2]
+    val<-strsplit(t2,"_")[[1]][1]
+    return(val)
+}
+
 for (i in 1:length(chromosomes)) {
     chr <- chromosomes[i]
     
-    plotFile=paste0("chr",chr,"_min5_grouped.pdf")
-    pdf(plotFile, height = 10, width = 8)
-    plotPerChromosome(geneticMap,selectedDels, libraries,df,column='homDelsPer', groupByCM=T, chr=chr, minExonCount=4)  
-    dev.off() 
-    
     plotFile=paste0("chr",chr,"_min5.pdf")
     pdf( plotFile, height = 10, width = 8)
-    plotPerChromosome(geneticMap,selectedDels, libraries,df,column='homDelsPer', groupByCM=F, chr=chr, minExonCount=4)  
+    code<-paste0("plotPerChromosome(geneticMap,selectedDels, libraries,df,column='homDelsPer', 
+        groupByCM=T,groupByCMPrecision=1, chr=chr, minExonCount=4, parseLibFun=",parser,")")  
+    print(code)
+    eval(parse(text=code))
+
     dev.off()
-    
-    
-    
+
 }
 
 homSelDel<-getHomSelectedDeletions(selectedDels,geneticMap)

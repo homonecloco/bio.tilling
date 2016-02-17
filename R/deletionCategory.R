@@ -275,11 +275,12 @@ getDeletionsPerCM<-function(geneticMap,
                             df,
                             minExonCount=5, 
                             groupByCM=FALSE,
+                            groupByCMPrecision=0,
                             chromosome=NULL){
     library(sqldf)
     selectedDels$category<-getDeletionCategory(selectedDels, threshold=0.75)
         
-    cmGroup<-ifelse(groupByCM,"round(cm)","cm")
+    cmGroup<-ifelse(groupByCM,paste0("round(cm,",groupByCMPrecision,")"),"cm")
     cmWhere<-ifelse(is.null(chromosome)," 1 ", paste0( " chr='", chromosome, "' "))
     exonCounts<-sqldf('SELECT Scaffold, Count(*) as exonCount FROM df group by Scaffold')
     
