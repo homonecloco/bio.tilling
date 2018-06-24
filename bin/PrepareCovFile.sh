@@ -10,7 +10,7 @@ mkdir -p $outputFolder
 for f in `ls $inputFolder | grep -v bai`; do
     echo $f
     filename="${f%.*}"
-    if [ -f $outputFolder/$filename.tab ] ; then
+    if [ -f $outputFolder/$filename.bedCov ] ; then
         echo "Already extracted"
     else
         #This line can be paralelized. 
