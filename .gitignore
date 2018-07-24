@@ -2,4 +2,5 @@
 .Rhistory
 .ipynb_checkpoints
 .RData
+.DS_Store
 ./docs/output_example
