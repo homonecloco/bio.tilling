@@ -14,12 +14,8 @@ plotLibraryOnScaffold <- function(contig, library, df, mat, dels, samplesSD, avg
 	
 	tmpDf2<-subset(df,Scaffold==contig)
 	tmpDf2$exon <-rownames(tmpDf2)
-	#print(colnames(tmpDf2))
-	#print(head(tmpDf))
 
 	innerDf<-merge(tmpDf2, tmpDf, by.x="exon", by.y="Var1")
-	#print(colnames(innerDf))
-	#print(colnames(libDf))
 	innerDf<-merge(innerDf, libDf, by.x="Var2", by.y="Library")
 
 	innerDf$ValueType <- mapply(getValueType,innerDf$value, innerDf$sdLib, innerDf$sdExon)
@@ -35,13 +31,13 @@ plotLibraryOnScaffold <- function(contig, library, df, mat, dels, samplesSD, avg
 	gg<- ggplot(plot_Data, aes(x=factor(Start), y=value))
 	gg<- gg + geom_errorbar(aes(ymax=1+3* sdExon, ymin=1-3* sdExon), colour='gray', alpha=0.75) 
 	gg<- gg + geom_boxplot(outlier.shape = NA)
-	#gg<-gg + stat_smooth() 
 	
 	gg<- gg+geom_line(data=lines_plot_data, aes(x=factor(Start), y=value,group=Library, colour=Library))
 	gg<- gg+geom_line(data=lines_plot_data, aes(x=factor(Start), y=MaxForHet,group="Max. for Het", colour="Max. for Het"))
-	#gg<-gg+geom_point(aes(colour=ValueType))
-	gg<- gg + geom_point(data=plot_Data[plot_Data$Library == library,], aes(x=factor(Start), y=value, col=factor(ValueType)))
-	#gg<- gg + coord_cartesian(ylim=c(0, 2))
+	gg<- gg + geom_point(data=plot_Data[plot_Data$Library == library,], 
+		aes(x=factor(Start), 
+		y=value, 
+		col=factor(ValueType)))
 	gg<- gg + ggtitle(paste("Normalised coverage\n ", contig))
 	gg
 }
