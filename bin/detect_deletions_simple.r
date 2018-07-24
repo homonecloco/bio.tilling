@@ -19,7 +19,7 @@ df<-getExonsDF(mat)
 dels<-getAllDeletedExons(mat,df)
 libSD<-getLibSD(mat)
 
-#sÂÂscaffsWithDels<-getAllScaffoldsWithDeletions(df,dels)
+#scaffsWithDels<-getAllScaffoldsWithDeletions(df,dels)
 
 #deslWithAVGs<-getAllScaffoldAveragesParallel(scaffsWithDels, mat,df, cores=cores)
 
