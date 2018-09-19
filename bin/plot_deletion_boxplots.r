@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 library(bio.tilling)
 library(sqldf)
 

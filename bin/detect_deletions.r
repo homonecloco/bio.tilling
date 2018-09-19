@@ -1,3 +1,4 @@
+#!/usr/bin/env Rscript
 
 options(echo=TRUE) 
 #devtools::install_github("homonecloco/bio.tilling")
