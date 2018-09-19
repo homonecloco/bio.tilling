@@ -2,7 +2,7 @@
 
 options(echo=TRUE) 
 #devtools::install_github("homonecloco/bio.tilling")
-#require('bio.tilling')
+require('bio.tilling')
 library(sqldf)
 
 
@@ -24,11 +24,11 @@ print(thisFile())
 path<- dirname(thisFile())
 print(path)
 
-deletions_file<-paste0(path,"/../R/deletionCategory.R")
-plot_file<-paste0(path,"/../R/plotFunctions.R")
+#deletions_file<-paste0(path,"/../R/deletionCategory.R")
+#plot_file<-paste0(path,"/../R/plotFunctions.R")
 
-source(deletions_file)
-source(plot_file)
+#source(deletions_file)
+#source(plot_file)
 
 args <- commandArgs(trailingOnly = TRUE)
 
