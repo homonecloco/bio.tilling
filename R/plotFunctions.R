@@ -34,10 +34,7 @@ plotLibraryOnScaffold <- function(contig, library, df, mat, dels, samplesSD, avg
 	
 	gg<- gg+geom_line(data=lines_plot_data, aes(x=factor(Start), y=value,group=Library, colour=Library))
 	gg<- gg+geom_line(data=lines_plot_data, aes(x=factor(Start), y=MaxForHet,group="Max. for Het", colour="Max. for Het"))
-	gg<- gg + geom_point(data=plot_Data[plot_Data$Library == library,], 
-		aes(x=factor(Start), 
-		y=value, 
-		col=factor(ValueType)))
+	gg<- gg + geom_point(data=plot_Data[plot_Data$Library == library,], aes(x=factor(Start), y=value, col=factor(ValueType)))
 	gg<- gg + ggtitle(paste("Normalised coverage\n ", contig))
 	gg
 }

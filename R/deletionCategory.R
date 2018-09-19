@@ -48,8 +48,11 @@ filterLowQualityExons <-function(mat, maxSD=0.3){
 #' the rows must be named with the format "Scaffold:start:end". 
 #' 
 #' @param filename: The filename with the table. 
+#' @param is_gz: The file is compressed 
 readCoverageTable<-function(filename, is_gz=FALSE){
-	fn <- ifelse(is_gz, gzfile(filename), filename)
+	print(filename)
+	fn <- filename
+	if (is_gz == TRUE ) fn <- gzfile(filename)
 	counts<-read.csv(fn, header=TRUE, sep="\t", row.names=1)
 	counts$remove <-NULL
 	counts<-counts[,colSums(counts,na.rm=T)>0]
