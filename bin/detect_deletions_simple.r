@@ -6,7 +6,7 @@ library("optparse")
 #dirname(sys.frame(0)$ofile)
 #programDir <- dirname(sys.frame(1)$ofile)
 
-devtools::install_local("/Users/ramirezr/Documents/public_code/bio.tilling")
+#devtools::install_local("/Users/ramirezr/Documents/public_code/bio.tilling")
 require('bio.tilling')
 
 option_list = list(
