@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 library("optparse")
 
-#options(echo=TRUE) 
+options(echo=TRUE) 
 #devtools::install_github("homonecloco/bio.tilling")
 #dirname(sys.frame(0)$ofile)
 #programDir <- dirname(sys.frame(1)$ofile)
@@ -33,7 +33,7 @@ filename<-unlist(opt$coverage_file)
 output_folder<-opt$out
 is_gz <- opt$gzip
 
-dir.create(output_folder, recursive = TRUE)
+
 #cores<-as.integer(args[2])
 
 covs<-readCoverageTable(filename, is_gz=is_gz)
@@ -43,21 +43,20 @@ df<-getExonsDF(covs)
 mat<-normalizeCovs(covs, df)
 rm(covs)
 
+dir.create(output_folder, recursive = TRUE)
+setwd(output_folder)
+
 mat<-filterLowQualityExons(mat, maxSD=0.3)
+gc()
+write.csv(mat, file='mat.csv')
+
 df<-getExonsDF(mat)
+write.csv(df, file='df.csv')
 
 dels<-getAllDeletedExons(mat,df)
-libSD<-getLibSD(mat)
-
-#scaffsWithDels<-getAllScaffoldsWithDeletions(df,dels)
-
-#deslWithAVGs<-getAllScaffoldAveragesParallel(scaffsWithDels, mat,df, cores=cores)
-
-#selectedDels<-deslWithAVGs[deslWithAVGs$Score>=1,]
-
 write.csv(dels, file="dels.csv")
-write.csv(deslWithAVGs, file='deslWithAVGs.csv')
-write.csv(df, file='df.csv')
+
+libSD<-getLibSD(mat)
 write.csv(libSD, file='libSD.csv')
-write.csv(mat, file='mat.csv')
+
 

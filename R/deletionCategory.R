@@ -40,8 +40,9 @@ filterLowQualityExons <-function(mat, maxSD=0.3){
 	exonSD<-apply(mat, 1, sd)
  	fineSD<-exonSD < maxSD
  	mat[fineSD,]
+    mat<-mat[complete.cases(mat), ]
+    mat
 }
-
 
 
 #' Reads the table with the coverages. The table has headers containing the libary name. 
@@ -68,13 +69,14 @@ readCoverageTable<-function(filename, is_gz=FALSE){
 getExonsDF<-function(mat){
 	names<-rownames(mat)
 	exons<-strsplit(as.character(names), ":")
-	scaffolds<-sapply(exons, "[[", 1)
-	starts<-as.integer(sapply(exons, "[[", 2))
-    ends<-as.integer(sapply(exons, "[[", 3))
-	exonLengths<-ends-starts
-	sdExons<-apply(mat,1,sd)
-    df<-data.frame(Exon=names, Scaffold=scaffolds, Start=starts, Ends=ends, ExonL=exonLengths, sdExon=sdExons)
-    df
+    df_names= as.data.frame(t(as.data.frame(exons,stringsAsFactors = F)),stringsAsFactors = F)
+    colnames(df_names) <- c("Scaffold", "Start", "Ends")
+    df_names$Exon<-names
+    df_names$Start<-as.integer(df_names$Start)
+    df_names$Ends<-as.integer(df_names$Ends)
+	df_names$ExonL<-df_names$Ends-df_names$Start
+    df_names$sdExon<-apply(mat,1,sd)
+    df_names
 }
 
 getExonsDetails<-function(names){
