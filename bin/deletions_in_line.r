@@ -48,12 +48,15 @@ for (chr in unique(df$Scaffold)) {
                                    line=opt$line,
                                    max_gap = opt$max_gap
                                   )	
-	chr_dels$chr <- chr
-	if(is.null(all_chr_dels)){
-		all_chr_dels<-chr_dels
-	}else{
-		all_chr_dels<-rbind(all_chr_dels,chr_dels)
-	}
+  chr_dels$chr <- chr
+  print(chr)
+  if(ncol(chr_dels) > 6 && nrow(chr_dels) > 0){
+    if(is.null(all_chr_dels)){
+      all_chr_dels<-chr_dels
+  	}else{
+  		all_chr_dels<-rbind(all_chr_dels,chr_dels)
+  	}
+  }
 }
 
 
