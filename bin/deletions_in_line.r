@@ -15,10 +15,10 @@ option_list = list(
    default=NULL, 
    help="Coverage file", metavar="CHARACTER"),
   make_option(c("-m", "--max_gap"), 
-  	type="integer",
-  	default=3,
-  	help="Maximum gap length"
-  	),
+    type="integer",
+    default=3,
+    help="Maximum gap length"
+    ),
   make_option(c("-o", "--out"), type="character", default="./deletions_out", 
               help="output folder [default= %default]. This folder most contains the files 'dels.csv' and 'df.csv'", 
               metavar="DIR")
@@ -43,19 +43,19 @@ dels <- read.csv("dels.csv")
 
 all_chr_dels <- NULL
 for (chr in unique(df$Scaffold)) {
-	chr_dels <- getDeletionsInChromosome(df, dels,
+  chr_dels <- getDeletionsInChromosome(df, dels,
                                    chr=chr, 
                                    line=opt$line,
                                    max_gap = opt$max_gap
-                                  )	
+                                  ) 
   chr_dels$chr <- chr
   print(chr)
   if(ncol(chr_dels) > 6 && nrow(chr_dels) > 0){
     if(is.null(all_chr_dels)){
       all_chr_dels<-chr_dels
-  	}else{
-  		all_chr_dels<-rbind(all_chr_dels,chr_dels)
-  	}
+    }else{
+      all_chr_dels<-rbind(all_chr_dels,chr_dels)
+    }
   }
 }
 
