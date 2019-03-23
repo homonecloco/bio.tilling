@@ -332,34 +332,31 @@ getMinimumDeletionValueInScaffold<-function(contig, df, mat, samplesSD ){
 getDeletionsInChromosome<-function(exons_df, dels,
                                    chr="IWGSC_3BSEQ_3B_traes3bPseudomoleculeV1", 
                                    line="Cadenza0154_1158_LIB10947_LDI9034",
-                                   max_gap = 2
+                                   max_gap = 2,
+                                   window = ""
                                   ){
     exons<-exons_df[exons_df$Scaffold == chr,  c("Exon", "Start", "Ends")]
-    dels<-dels[dels$Library== line, c("Exon", "Library", "HomDel" )]
+    dels<-dels[dels$Library== line & dels$HomDel == TRUE & dels$Scaffold == chr , c("Exon", "Library", "HomDel" ),]
     dels_df <- sqldf("SELECT DISTINCT exons.*, dels.Library, dels.HomDel FROM exons LEFT JOIN dels ON exons.Exon == dels.Exon ORDER BY Start")
     dels_df$Library <- line
     dels_df$HomDel <- ifelse(is.na(dels_df$HomDel), FALSE, dels_df$HomDel)
-    
     tempExons <- rownames(dels_df)
-
-    current_strech <- list(start=0, ends=0, library=line, length=0, index_start=0, index_end=0, gap_exons=0)
-    found_deletions<-data.frame(row.names = c("start","ends","library","length","index_start", "index_end", "gap_exons"))
-	current_gap <- 0
+    current_strech <- list(chr=chr, start=0, ends=0, library=line, length=0, index_start=0, index_end=0, gap_exons=0)
+    found_deletions<-data.frame(row.names = c("chr","start","ends","library","length","index_start", "index_end", "gap_exons"))
+    current_gap <- 0
     for (i in tempExons) {
-		val<-dels_df[i,]
-		if( val$HomDel == FALSE ){
+        val<-dels_df[i,]
+        if( val$HomDel == FALSE ){
             if(current_strech$length > 0){
                 current_gap <- current_gap + 1
                 if(current_gap > max_gap){
                     found_deletions<-rbind(found_deletions, data.frame(current_strech))   
-                    current_strech <- list(start=0, ends=0, library=line, length=0, index_start=0, index_end=0, gap_exons=0)
+                    current_strech <- list(chr=chr, start=0, ends=0, library=line, length=0, index_start=0, index_end=0, gap_exons=0)
                     current_gap <- 0
                 }
-            }
-             
-			next
-		}
-        
+            }     
+            next
+        }
         if(current_strech$length == 0){
             current_strech$start <- val$Start
             current_strech$index_start <- i
@@ -369,15 +366,90 @@ getDeletionsInChromosome<-function(exons_df, dels,
         current_strech$length <- current_strech$length + 1
         current_strech$index_end <- i
         current_gap <- 0
-			
-	}
+    }
+    if(current_strech$length > 0){
+        rbind(found_deletions, data.frame(current_strech)) 
+    }
+    if(length(found_deletions) > 0){
+        found_deletions$window <- window
+    }
     found_deletions
 }
 
 
+validate_deletions <- function(top, bottom, min_overlap=0.5){
+    hits     <- findOverlaps(bottom,top)
+    overlaps <- pintersect(bottom[queryHits(hits)], top[subjectHits(hits)])
+    hits_df  <- data.frame(hits)
+    hits_df$topPercentOverlap <- width(overlaps) / width( top[subjectHits(hits)])
+    top_overlap <- sqldf("SELECT subjectHits as top, sum(topPercentOverlap) as overlap FROM hits_df GROUP BY subjectHits")
+    top$validated <- F
+    top[top_overlap$top ]$validated <- ifelse(top_overlap$overlap > min_overlap,
+                                              TRUE, 
+                                              top[top_overlap$top ]$validated )
+    top
+}
 
+merge_deletions<-function(top, bottom, min_overlap=0.5, min_validate_cov=1){
+    bottom_window<-unique(bottom$window)
+    pre_validated<-top[top$validated==TRUE, ]
+    
+    merged<-unlist(as(list(top,bottom), "GRangesList"))
+    merged<-reduce(merged)
 
+    #We are getting which windows are validated on either side. Also, we merge to the validated set the deletions previously validated
+    top_validated   <-validate_deletions(top, bottom, min_overlap=min_overlap)
+    bottom_validated<-validate_deletions(bottom, top, min_overlap=min_overlap)
+    validated<-unlist(as(list(top_validated,bottom_validated,pre_validated), "GRangesList"))
+    validated<-validated[validated$validated==TRUE, ]    
+    
+    #We validate now from the large merge to the validated windows, but now the overlap needs to be more than 1
+    merged<-validate_deletions(merged,validated, min_overlap=min_validate_cov)
+    merged$library <- unique(top$library)
+    
+    #This section gets the topmost window where there is at least some evidence of the deletion. 
+    hits     <- findOverlaps(top,merged)
+    hits_df  <- data.frame(hits)
+    colnames(hits_df)<-c("top","merged")
+    hits_df$window   <-  top[hits_df$top,]$window
+    merged$window <- bottom_window
+    merged[hits_df$merged,]$window <-  top[hits_df$top,]$window
+    merged
+}
 
+#The folder should contain different subfolders with the different window sizes. 
+#The deletions are run in the order of the array. 
+get_all_deletions<-function(folder="deletions",
+                            deletions=c("200k","100k","075k","050k","025k","010k"),
+                           chr="chr5D",
+                           line="J1.33_k80d50Mc5", 
+                           max_gap=5){
+    top <- NA
+    first<-TRUE
+    for(i in deletions){
+        print(i)
+        df   <- read.csv(gzfile(paste0(i,"/df.csv.gz")),stringsAsFactors=T )
+        dels <- read.csv(gzfile(paste0(i,"/dels.csv.gz")),stringsAsFactors=T)
+
+        chr_dels <- getDeletionsInChromosome(df, dels,
+                                             chr=chr,
+                                             line=line,
+                                             max_gap = max_gap,
+                                             window=i)
+        if(length(chr_dels) == 0){
+            next
+        }
+        range_chr_dels  <- makeGRangesFromDataFrame(chr_dels, end.field="ends", keep.extra.columns = T)
+        range_chr_dels$validated <- F
+        if(first){
+            top<-range_chr_dels
+            first <- FALSE
+            next
+        }
+       top<-merge_deletions(top, range_chr_dels)
+    } 
+    top
+}
 
 
 
