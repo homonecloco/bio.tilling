@@ -274,13 +274,13 @@ plotLibraryOnChromosomeInterval <- function(contig, library, df, mat, samplesSD,
 	libNames <-c(library)
 	lines_plot_data<-subset(plot_Data, Library %in% library )
 	lines_plot_data$MaxForHet<-0.5+lines_plot_data$sdExon
-	gg<- ggplot(plot_Data, aes(x=factor(Start), y=value))
-	gg<- gg + geom_errorbar(aes(ymax=1+3* sdExon, ymin=1-3* sdExon), colour='gray', alpha=0.75) 
-	gg<- gg + geom_boxplot(outlier.shape = NA)
-	gg<- gg + geom_line(data=lines_plot_data, aes(x=factor(Start), y=value,group=Library, colour=Library))
-	gg<- gg + geom_line(data=lines_plot_data, aes(x=factor(Start), y=MaxForHet,group="Max. for Het", colour="Max. for Het"))
-	gg<- gg + geom_point(data=plot_Data[plot_Data$Library == library,], aes(x=factor(Start), y=value, col=factor(ValueType)))
-	gg<- gg + ggtitle(paste("Normalised coverage\n", contig,"\n",from, "-", to))
+	gg <- ggplot(plot_Data, aes(x=factor(Start), y=value))
+	gg <- gg + geom_errorbar(aes(ymax=1+3* sdExon, ymin=1-3* sdExon), colour='gray', alpha=0.75) 
+	gg <- gg + geom_boxplot(outlier.shape = NA)
+	gg <- gg + geom_line(data=lines_plot_data, aes(x=factor(Start), y=value,group=Library, colour=Library))
+	gg <- gg + geom_line(data=lines_plot_data, aes(x=factor(Start), y=MaxForHet,group="Max. for Het", colour="Max. for Het"))
+	gg <- gg + geom_point(data=plot_Data[plot_Data$Library == library,], aes(x=factor(Start), y=value, col=factor(ValueType)))
+	gg <- gg + ggtitle(paste("Normalised coverage\n", contig,"\n",from, "-", to))
     gg <- gg + theme_bw()
 	gg
 }

@@ -419,36 +419,40 @@ merge_deletions<-function(top, bottom, min_overlap=0.5, min_validate_cov=1){
 
 #The folder should contain different subfolders with the different window sizes. 
 #The deletions are run in the order of the array. 
-get_all_deletions<-function(folder="deletions",
+get_all_deletions<-function(folder=".",
                             deletions=c("200k","100k","075k","050k","025k","010k"),
                            chr="chr5D",
                            line="J1.33_k80d50Mc5", 
                            max_gap=5){
     top <- NA
     first<-TRUE
+    raw_dels<-NA
     for(i in deletions){
         print(i)
-        df   <- read.csv(gzfile(paste0(i,"/df.csv.gz")),stringsAsFactors=T )
-        dels <- read.csv(gzfile(paste0(i,"/dels.csv.gz")),stringsAsFactors=T)
+        df   <- read.csv(gzfile(paste0(folder,"/",i,"/df.csv.gz")),stringsAsFactors=T )
+        dels <- read.csv(gzfile(paste0(folder,"/",i,"/dels.csv.gz")),stringsAsFactors=T)
 
         chr_dels <- getDeletionsInChromosome(df, dels,
                                              chr=chr,
                                              line=line,
                                              max_gap = max_gap,
                                              window=i)
-        if(length(chr_dels) == 0){
+        if(ncol(chr_dels) > 6 && nrow(chr_dels) > 0){
             next
         }
         range_chr_dels  <- makeGRangesFromDataFrame(chr_dels, end.field="ends", keep.extra.columns = T)
         range_chr_dels$validated <- F
         if(first){
             top<-range_chr_dels
+            raw_dels<-chr_dels
             first <- FALSE
             next
         }
-       top<-merge_deletions(top, range_chr_dels)
+        top<-merge_deletions(top, range_chr_dels)
+        raw_dels <- rbind(raw_dels,chr_dels)
     } 
-    top
+    #top
+    list(raw_deletions = raw_dels, merged_deletions = top)
 }
 
 
