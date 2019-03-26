@@ -356,7 +356,7 @@ getDeletionsInChromosome<-function(exons_df, dels,
                 }
             }     
             next
-        }
+        }        
         if(current_strech$length == 0){
             current_strech$start <- val$Start
             current_strech$index_start <- i
@@ -365,7 +365,7 @@ getDeletionsInChromosome<-function(exons_df, dels,
         current_strech$ends = val$Ends
         current_strech$length <- current_strech$length + 1
         current_strech$index_end <- i
-        current_gap <- 0
+        current_gap <- 0 
     }
     if(current_strech$length > 0){
         rbind(found_deletions, data.frame(current_strech)) 
@@ -423,36 +423,49 @@ get_all_deletions<-function(folder=".",
                             deletions=c("200k","100k","075k","050k","025k","010k"),
                            chr="chr5D",
                            line="J1.33_k80d50Mc5", 
-                           max_gap=5){
+                           max_gap=5, 
+                           df_h  = hash(),
+                           dels_h = hash()){
+    library(GenomicRanges)
     top <- NA
     first<-TRUE
     raw_dels<-NA
     for(i in deletions){
-        print(i)
-        df   <- read.csv(gzfile(paste0(folder,"/",i,"/df.csv.gz")),stringsAsFactors=T )
-        dels <- read.csv(gzfile(paste0(folder,"/",i,"/dels.csv.gz")),stringsAsFactors=T)
-
+        if(!all(has.key(i, dels_h))){
+            path<-paste0(folder,"/",i,"/df.csv.gz")
+            df_h[i] <- read.csv(gzfile(path))
+            path<-paste0(folder,"/",i,"/dels.csv.gz")
+            tmp<-read.csv(gzfile(path))
+            dels_h[i] <- tmp[tmp$HomDel, ]
+        }
+        df   <- df_h[[i]]
+        dels <- dels_h[[i]]
         chr_dels <- getDeletionsInChromosome(df, dels,
                                              chr=chr,
                                              line=line,
                                              max_gap = max_gap,
                                              window=i)
-        if(ncol(chr_dels) > 6 && nrow(chr_dels) > 0){
+        
+        if(nrow(chr_dels) == 0 || ncol(chr_dels) == 0){
             next
         }
-        range_chr_dels  <- makeGRangesFromDataFrame(chr_dels, end.field="ends", keep.extra.columns = T)
+        range_chr_dels <- makeGRangesFromDataFrame(chr_dels, end.field="ends", keep.extra.columns = T)
         range_chr_dels$validated <- F
         if(first){
-            top<-range_chr_dels
-            raw_dels<-chr_dels
-            first <- FALSE
+            range_chr_dels$length      <- NULL
+            range_chr_dels$index_start <- NULL
+            range_chr_dels$index_end   <- NULL
+            range_chr_dels$gap_exons   <- NULL
+            top      <-range_chr_dels
+            raw_dels <- chr_dels
+            first    <- FALSE
             next
         }
         top<-merge_deletions(top, range_chr_dels)
         raw_dels <- rbind(raw_dels,chr_dels)
     } 
     #top
-    list(raw_deletions = raw_dels, merged_deletions = top)
+    hash("raw_deletions" = raw_dels, "merged_deletions" = top)
 }
 
 

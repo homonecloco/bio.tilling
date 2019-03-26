@@ -8,7 +8,7 @@ options(echo=TRUE)
 #dirname(sys.frame(0)$ofile)
 #programDir <- dirname(sys.frame(1)$ofile)
 
-devtools::install_local("/Users/ramirezr/Documents/public_code/bio.tilling", force=TRUE)
+#devtools::install_local("/Users/ramirezr/Documents/public_code/bio.tilling")
 require('bio.tilling')
 
 option_list = list(
@@ -31,6 +31,11 @@ option_list = list(
     default=NULL,
     help="File with the list of chromosomes",
     metavar="FILE"
+    ),
+  make_option(c("-i", "--index"),
+    type="integer",
+    default=NULL,
+    help="The index of the line to calculate (optional)."
     ),
   make_option(c("-o", "--out"), 
     type="character", 
@@ -55,16 +60,25 @@ out    <- opt$out
 lines = read.csv(opt$lines)[,1]
 chromosomes = read.csv(opt$chromosomes)[,1]
 
+if(!is.null(opt$index)){
+  lines<-c(as.character(lines[opt$index]))
+}
+
+merged_path = paste0(out, "/line_deletions_merged")
+dels_path = paste0(out, "/line_deletions")
+dir.create(merged_path, recursive = TRUE)
+dir.create(dels_path, recursive = TRUE)
+
 for(line in lines){
   all_chr_dels <- NULL
   all_raw_dels <- NULL
   for (chr in chromosomes) { 
-
+    print(paste0(line, ":",chr))
     chr_dels_h <- get_all_deletions(folder=out,
       deletions=windows,
       chr=chr,
       line=line, 
-      max_gap=max_gap, 
+      max_gap=opt$max_gap, 
       dels_h=dels_h,
       df_h=df_h)
     chr_dels<-chr_dels_h[["merged_deletions"]]
@@ -84,11 +98,9 @@ for(line in lines){
       all_chr_dels<-rbind(all_chr_dels,chr_dels)        
     }
   }
-  dir.create("line_deletions_merged", recursive = TRUE)
-  setwd("line_deletions_merged")
-  write.csv(all_chr_dels, paste0(line, ".csv") )
-  dir.create("line_deletions", recursive = TRUE)
-  setwd("line_deletions_merged")
-  write.csv(all_raw_dels, paste0(line, ".csv") )
+  
+ 
+  write.csv(all_chr_dels, paste0(merged_path, "/", line, ".csv"), row.names=F )
+  write.csv(all_raw_dels, paste0(dels_path,   "/", line, ".csv"), row.names=F )
   gc()
 }
