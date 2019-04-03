@@ -86,21 +86,25 @@ for(line in lines){
     if(length(raw_dels) == 0 || is.na(raw_dels)){
       next
     }
+    chr_dels <- data.frame(chr_dels)
+    chr_dels <- chrdels[,c("seqnames", "start", "end", "width", "strand","library", "window", "validated")]
+    all_raw_dels <- all_raw_dels[,c("chr", "start", "ends", "library", "length",  "index_start", "index_end", "gap_exons","window")]
+    
     if(is.null(all_raw_dels)){
       all_raw_dels<-raw_dels
     }else{
       all_raw_dels<-rbind(all_raw_dels,raw_dels)
     }
-    chr_dels <- data.frame(chr_dels)
+    
     if(is.null(all_chr_dels)){
       all_chr_dels<-chr_dels
     }else{
       all_chr_dels<-rbind(all_chr_dels,chr_dels)        
     }
+    gc()
   }
   
  
   write.csv(all_chr_dels, paste0(merged_path, "/", line, ".csv"), row.names=F )
   write.csv(all_raw_dels, paste0(dels_path,   "/", line, ".csv"), row.names=F )
-  gc()
 }
