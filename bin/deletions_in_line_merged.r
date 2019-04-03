@@ -87,7 +87,7 @@ for(line in lines){
       next
     }
     chr_dels <- data.frame(chr_dels)
-    chr_dels <- chrdels[,c("seqnames", "start", "end", "width", "strand","library", "window", "validated")]
+    chr_dels <- chr_dels[,c("seqnames", "start", "end", "width", "strand","library", "window", "validated")]
     all_raw_dels <- all_raw_dels[,c("chr", "start", "ends", "library", "length",  "index_start", "index_end", "gap_exons","window")]
     
     if(is.null(all_raw_dels)){
