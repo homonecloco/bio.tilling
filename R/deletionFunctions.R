@@ -350,7 +350,8 @@ getDeletionsInChromosome<-function(exons_df, dels,
             if(current_strech$length > 0){
                 current_gap <- current_gap + 1
                 if(current_gap > max_gap){
-                    found_deletions<-rbind(found_deletions, data.frame(current_strech))   
+                    current_strech <- data.frame(current_strech)
+                    found_deletions<-rbind(found_deletions, current_strech)   
                     current_strech <- list(chr=chr, start=0, ends=0, library=line, length=0, index_start=0, index_end=0, gap_exons=0)
                     current_gap <- 0
                 }
@@ -368,7 +369,8 @@ getDeletionsInChromosome<-function(exons_df, dels,
         current_gap <- 0 
     }
     if(current_strech$length > 0){
-        rbind(found_deletions, data.frame(current_strech)) 
+        current_strech <- data.frame(current_strech)
+        found_deletions<-rbind(found_deletions, current_strech)  
     }
     if(length(found_deletions) > 0){
         found_deletions$window <- window
@@ -390,10 +392,20 @@ validate_deletions <- function(top, bottom, min_overlap=0.5){
     top
 }
 
-merge_deletions<-function(top, bottom, min_overlap=0.5, min_validate_cov=1){
-    bottom_window<-unique(bottom$window)
+merge_deletions<-function(top_in, bottom_in, min_overlap=0.5, min_validate_cov=1){
+    bottom_window<-unique(bottom_in$window)
+    top   <-reduce(top_in)
+    top$library   <- top_in$library
+    top$window    <- top_in$window
+    top$validated <- top_in$validated
+
     pre_validated<-top[top$validated==TRUE, ]
     
+    bottom<-reduce(bottom_in)
+    bottom$library   <- bottom_in$library
+    bottom$window    <- bottom_in$window
+    bottom$validated <- bottom_in$validated
+
     merged<-unlist(as(list(top,bottom), "GRangesList"))
     merged<-reduce(merged)
 
@@ -413,7 +425,7 @@ merge_deletions<-function(top, bottom, min_overlap=0.5, min_validate_cov=1){
     colnames(hits_df)<-c("top","merged")
     hits_df$window   <-  top[hits_df$top,]$window
     merged$window <- bottom_window
-    merged[hits_df$merged,]$window <-  top[hits_df$top,]$window
+    merged[hits_df$merged,]$window <-  top[hits_df$top,]$window    
     merged
 }
 
@@ -426,7 +438,6 @@ get_all_deletions<-function(folder=".",
                            max_gap=5, 
                            df_h  = hash(),
                            dels_h = hash()){
-    library(GenomicRanges)
     top <- NA
     first<-TRUE
     raw_dels<-NA

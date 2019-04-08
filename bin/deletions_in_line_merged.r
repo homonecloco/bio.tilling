@@ -2,7 +2,7 @@
 library("optparse")
 library("sqldf")
 library('hash')
-
+library(GenomicRanges)
 options(echo=TRUE) 
 #devtools::install_github("homonecloco/bio.tilling")
 #dirname(sys.frame(0)$ofile)
